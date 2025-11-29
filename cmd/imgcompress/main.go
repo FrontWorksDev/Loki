@@ -52,7 +52,7 @@ func processFile(processor *imgpkg.Processor, inputPath string, opts *cli.Option
 	// 入力ファイルのサイズを取得
 	inputSize, err := processor.GetFileSize(inputPath)
 	if err != nil {
-		return fmt.Errorf("ファイルが見つかりません")
+		return fmt.Errorf("ファイルが見つかりません: %w", err)
 	}
 
 	// 画像を読み込み
@@ -82,16 +82,38 @@ func processFile(processor *imgpkg.Processor, inputPath string, opts *cli.Option
 	}
 
 	// 出力ファイルのサイズを取得
-	outputSize, _ := processor.GetFileSize(outputPath)
+	outputSize, err := processor.GetFileSize(outputPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[警告] 出力ファイルのサイズ取得に失敗しました: %v\n", err)
+		outputSize = 0
+	}
 
 	// 結果を表示
-	reduction := float64(inputSize-outputSize) / float64(inputSize) * 100
-	fmt.Printf("[完了] %s -> %s (%s -> %s, %.0f%%削減)\n",
+	var percent float64
+	var label string
+	if inputSize > 0 {
+		if outputSize < inputSize {
+			percent = float64(inputSize-outputSize) / float64(inputSize) * 100
+			label = "削減"
+		} else if outputSize > inputSize {
+			percent = float64(outputSize-inputSize) / float64(inputSize) * 100
+			label = "増加"
+		} else {
+			percent = 0
+			label = "変化なし"
+		}
+	} else {
+		percent = 0
+		label = "変化なし"
+	}
+
+	fmt.Printf("[完了] %s -> %s (%s -> %s, %.0f%%%s)\n",
 		inputPath,
 		outputPath,
 		formatSize(inputSize),
 		formatSize(outputSize),
-		reduction,
+		percent,
+		label,
 	)
 
 	return nil

@@ -1,6 +1,7 @@
 package compressor
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"testing"
@@ -42,7 +43,7 @@ func TestJPEGCompressor_Compress(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run("quality_"+string(rune(tt.quality)), func(t *testing.T) {
+		t.Run(fmt.Sprintf("quality_%d", tt.quality), func(t *testing.T) {
 			data, err := comp.Compress(img, tt.quality)
 			if err != nil {
 				t.Fatalf("Compress failed: %v", err)
@@ -75,7 +76,7 @@ func TestPNGCompressor_Compress(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		t.Run("quality_"+string(rune(tt.quality)), func(t *testing.T) {
+		t.Run(fmt.Sprintf("quality_%d", tt.quality), func(t *testing.T) {
 			data, err := comp.Compress(img, tt.quality)
 			if err != nil {
 				t.Fatalf("Compress failed: %v", err)

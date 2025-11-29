@@ -71,7 +71,7 @@ func (p *Processor) Encode(w io.Writer, img image.Image, format Format, quality 
 	case FormatJPEG:
 		return jpeg.Encode(w, img, &jpeg.Options{Quality: quality})
 	case FormatPNG:
-		encoder := png.Encoder{CompressionLevel: p.qualityToPNGCompression(quality)}
+		encoder := png.Encoder{CompressionLevel: QualityToPNGCompression(quality)}
 		return encoder.Encode(w, img)
 	default:
 		return fmt.Errorf("サポートされていない形式です: %s", format)
@@ -115,8 +115,8 @@ func (p *Processor) detectFormat(r io.Reader) (Format, error) {
 	return FormatUnknown, fmt.Errorf("サポートされていない画像形式です")
 }
 
-// qualityToPNGCompression は品質値をPNG圧縮レベルに変換する
-func (p *Processor) qualityToPNGCompression(quality int) png.CompressionLevel {
+// QualityToPNGCompression は品質値をPNG圧縮レベルに変換する
+func QualityToPNGCompression(quality int) png.CompressionLevel {
 	// 品質が低いほど圧縮率を高くする
 	if quality >= 90 {
 		return png.NoCompression

@@ -1,9 +1,7 @@
 package compressor
 
 import (
-	"bytes"
 	"image"
-	"io"
 
 	imgpkg "github.com/FrontWorksDev/image-compressor/internal/image"
 )
@@ -26,13 +24,4 @@ func GetCompressor(format imgpkg.Format) Compressor {
 	default:
 		return nil
 	}
-}
-
-// compressWithEncoder は共通のエンコード処理
-func compressWithEncoder(img image.Image, encoder func(w io.Writer, img image.Image) error) ([]byte, error) {
-	var buf bytes.Buffer
-	if err := encoder(&buf, img); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
 }
