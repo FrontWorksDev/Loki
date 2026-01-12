@@ -46,7 +46,7 @@ go test -v ./...                 # Run tests with verbose output
 go test -run TestName ./...      # Run specific test
 go test -cover ./...             # Run tests with coverage
 go test -coverprofile=coverage.out ./...  # Generate coverage profile
-go cover -html=coverage.out      # View coverage in browser
+go tool cover -html=coverage.out      # View coverage in browser
 ```
 
 ### Linting & Formatting
