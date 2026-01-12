@@ -3,9 +3,9 @@ FROM mcr.microsoft.com/devcontainers/go:1-1.24-bookworm
 RUN apt-get update && apt-get install -y curl tar \
     && ARCH=$(uname -m) \
     && if [ "$ARCH" = "aarch64" ]; then \
-         URL="https://github.com/neovim/neovim/releases/latest/download/nvim-linux-arm64.tar.gz"; \
+         URL="https://github.com/neovim/neovim/releases/download/v0.11.5/nvim-linux-arm64.tar.gz"; \
        else \
-         URL="https://github.com/neovim/neovim/releases/latest/download/nvim-linux64.tar.gz"; \
+         URL="https://github.com/neovim/neovim/releases/download/v0.11.5/nvim-linux64.tar.gz"; \
        fi \
     && curl -LO "$URL" \
     && tar -C /usr/local -xzf $(basename "$URL") --strip-components=1 \
