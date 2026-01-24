@@ -1,3 +1,3 @@
 module github.com/FrontWorksDev/image-compresser
 
-go 1.24.3
+go 1.25.6
