@@ -10,23 +10,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**image-compresser** is a Go project for image compression. The project uses Go 1.24 with a development container setup including neovim, gopls, delve debugger, goimports, air (hot reload), and golangci-lint.
+**Loki** is a Go project for image compression. The project uses Go 1.25.6 managed by asdf.
 
 ## Development Setup
 
 ### Prerequisites
 
-- Docker and Dev Containers support (VSCode, Cursor, etc.)
-- The project is configured to use a devcontainer with Go 1.24 pre-installed
+- asdf (version manager)
+- Go 1.25.6 (managed by asdf via `.tool-versions`)
 
 ### Getting Started
 
-1. Open the project in a Dev Container environment
-2. The container will automatically install:
+1. Ensure asdf is installed: `asdf --version`
+2. Install the golang plugin if not already installed: `asdf plugin add golang` (if needed)
+3. Install Go 1.25.6: `asdf install`
+4. Install development tools:
    - gopls (Go language server)
    - delve (debugger)
    - goimports (import formatter)
-   - air (hot reload for development)
    - golangci-lint (linter)
 
 ## Common Development Commands
@@ -60,14 +61,13 @@ goimports -w ./...               # Format imports
 ### Running
 
 ```bash
-go run main.go                   # Run main package
-air                              # Run with hot reload (development)
+go run ./cmd/...                 # Run main package
 ```
 
 ### Debugging
 
 - Use delve debugger in your IDE
-- Or run: `dlv debug ./...`
+- Or run: `dlv debug ./cmd/...`
 
 ## Project Structure
 
@@ -85,16 +85,6 @@ To be completed as the project grows. Initially, expect:
 - Use `go fmt` and `goimports` before committing
 - Run `golangci-lint` to catch common issues
 - Write tests alongside implementation code
-
-### Hot Reload
-
-Use `air` during development for automatic recompilation:
-
-```bash
-air
-```
-
-This watches for file changes and rebuilds the application automatically.
 
 ### Testing Strategy
 
