@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**image-compresser** is a Go project for image compression. The project uses Go 1.25.6 managed by asdf.
+**Loki** is a Go project for image compression. The project uses Go 1.25.6 managed by asdf.
 
 ## Development Setup
 
