@@ -8,6 +8,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - TODOs should always include creating a branch, testing the implementation, committing
 - Whenever you modify a feature, be sure to modify (or create) a test and make sure the test passes!
 
+## Repository Configuration
+
+- **Author**: FrontWorksDev
+- **Repository Name**: Loki
+- **MCP GitHub API**: always use `Loki` repository
+
+## Be sure to do this at the beginning and end of the work when adding a modification feature. Be sure to include everything in the todo each time
+
+- The following operations must be performed at the start of work
+  - **At the start**: Always create a dedicated branch (feature/<feature name>, fixed/<fix description>, etc.)
+  - **NEVER work directly on the main branch**: Never commit any changes directly to the main branch.
+- Be sure to perform the following at the end of the work
+  1. create commit
+
 ## Project Overview
 
 **Loki** is a Go project for image compression. The project uses Go 1.25.6 managed by asdf.
@@ -35,19 +49,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Building
 
 ```bash
-go build ./...          # Build all packages
-go build -o bin/app     # Build with output binary
+go build ./...                      # Build all packages
+go build -o build/img-cli ./cmd/img-cli  # Build CLI to build directory
 ```
 
 ### Testing
 
 ```bash
-go test ./...                    # Run all tests
-go test -v ./...                 # Run tests with verbose output
-go test -run TestName ./...      # Run specific test
-go test -cover ./...             # Run tests with coverage
-go test -coverprofile=coverage.out ./...  # Generate coverage profile
-go tool cover -html=coverage.out      # View coverage in browser
+go test ./...                                          # Run all tests
+go test -v ./...                                       # Run tests with verbose output
+go test -run TestName ./...                            # Run specific test
+go test -cover ./...                                   # Run tests with coverage
+go test ./... -coverprofile=coverage.out -covermode=atomic  # Generate coverage profile (Codecov compatible)
+go tool cover -html=coverage.out                       # View coverage in browser
+go tool cover -func=coverage.out                       # Show coverage per function
 ```
 
 ### Linting & Formatting
@@ -71,11 +86,18 @@ go run ./cmd/...                 # Run main package
 
 ## Project Structure
 
-To be completed as the project grows. Initially, expect:
-
-- `main.go` - Entry point
-- Supporting packages for image compression logic
-- `testdata/` - Test fixtures and sample data
+```
+Loki/
+├── cmd/
+│   └── img-cli/          # CLI application for image processing
+├── internal/
+│   └── imageproc/        # Image processing packages (resize, etc.)
+├── testdata/             # Test fixtures and sample data
+│   └── output/          # Test output files (gitignored)
+├── build/               # Build artifacts (gitignored)
+├── configs/             # Configuration files
+└── scripts/             # Build and utility scripts
+```
 
 ## Development Guidelines
 
