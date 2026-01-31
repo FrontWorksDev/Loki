@@ -305,3 +305,21 @@ func TestJPEGProcessor_Compress_QualityBounds(t *testing.T) {
 		})
 	}
 }
+
+func TestJPEGProcessor_Convert_FormatMismatch(t *testing.T) {
+	p := NewJPEGProcessor()
+	input := createTestPNG(t, 100, 100)
+	reader := bytes.NewReader(input)
+	var output bytes.Buffer
+
+	// Try to convert with PNG format (should fail for JPEG processor)
+	opts := ConvertOptions{
+		Format:          FormatPNG,
+		CompressOptions: DefaultCompressOptions(),
+	}
+
+	_, err := p.Convert(context.Background(), reader, &output, opts)
+	if err == nil {
+		t.Error("Convert() should return error for mismatched format")
+	}
+}

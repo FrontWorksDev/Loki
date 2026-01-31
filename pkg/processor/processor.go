@@ -20,12 +20,17 @@ type Processor interface {
 // CompressOptions contains options for image compression.
 type CompressOptions struct {
 	// Quality specifies the JPEG quality (1-100). 0 means use default.
+	// This setting is only applied to JPEG and is ignored for PNG,
+	// which uses Level to control compression.
 	Quality int
 
 	// Level specifies the compression level.
+	// For JPEG: used when Quality is 0 (Low=60, Medium=75, High=90).
+	// For PNG: directly controls compression (BestSpeed, Default, BestCompression).
 	Level CompressionLevel
 
 	// PreserveMetadata indicates whether to preserve image metadata.
+	// TODO: Not yet implemented. Reserved for future use.
 	PreserveMetadata bool
 }
 

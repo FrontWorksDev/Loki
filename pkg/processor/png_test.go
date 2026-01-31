@@ -247,3 +247,21 @@ func TestPNGProcessor_Compress_CompressionLevels(t *testing.T) {
 	// (though this isn't always guaranteed with PNG)
 	t.Logf("Compression sizes: Low=%d, Medium=%d, High=%d", sizes[0], sizes[1], sizes[2])
 }
+
+func TestPNGProcessor_Convert_FormatMismatch(t *testing.T) {
+	p := NewPNGProcessor()
+	input := createTestJPEG(t, 100, 100, 95)
+	reader := bytes.NewReader(input)
+	var output bytes.Buffer
+
+	// Try to convert with JPEG format (should fail for PNG processor)
+	opts := ConvertOptions{
+		Format:          FormatJPEG,
+		CompressOptions: DefaultCompressOptions(),
+	}
+
+	_, err := p.Convert(context.Background(), reader, &output, opts)
+	if err == nil {
+		t.Error("Convert() should return error for mismatched format")
+	}
+}

@@ -67,6 +67,11 @@ func (p *PNGProcessor) Compress(ctx context.Context, r io.Reader, w io.Writer, o
 
 // Convert converts an image to PNG format.
 func (p *PNGProcessor) Convert(ctx context.Context, r io.Reader, w io.Writer, opts ConvertOptions) (*Result, error) {
+	// Validate target format
+	if opts.Format != FormatPNG {
+		return nil, fmt.Errorf("PNGProcessor only supports conversion to PNG, got %s", opts.Format)
+	}
+
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()

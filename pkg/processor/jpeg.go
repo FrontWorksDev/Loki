@@ -43,14 +43,17 @@ func (p *JPEGProcessor) Compress(ctx context.Context, r io.Reader, w io.Writer, 
 
 	// Determine quality
 	quality := opts.Quality
-	if quality <= 0 {
+	if quality == 0 {
+		// Use the compression level to derive JPEG quality when no explicit quality is provided.
 		quality = opts.Level.ToJPEGQuality()
-	}
-	if quality < 1 {
-		quality = 1
-	}
-	if quality > 100 {
-		quality = 100
+	} else {
+		// Clamp explicitly provided quality values to the valid JPEG range.
+		if quality < 1 {
+			quality = 1
+		}
+		if quality > 100 {
+			quality = 100
+		}
 	}
 
 	// Encode to buffer to get compressed size
@@ -74,6 +77,11 @@ func (p *JPEGProcessor) Compress(ctx context.Context, r io.Reader, w io.Writer, 
 
 // Convert converts an image to JPEG format.
 func (p *JPEGProcessor) Convert(ctx context.Context, r io.Reader, w io.Writer, opts ConvertOptions) (*Result, error) {
+	// Validate target format
+	if opts.Format != FormatJPEG {
+		return nil, fmt.Errorf("JPEGProcessor only supports conversion to JPEG, got %s", opts.Format)
+	}
+
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
