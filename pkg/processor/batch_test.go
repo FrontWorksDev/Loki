@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -30,7 +31,7 @@ func TestNewDefaultBatchProcessor(t *testing.T) {
 	}{
 		{
 			name:           "デフォルト設定",
-			wantMaxWorkers: 0, // runtime.NumCPU() - checked separately
+			wantMaxWorkers: runtime.NumCPU(),
 		},
 		{
 			name:           "ワーカー数を指定",
@@ -61,7 +62,7 @@ func TestNewDefaultBatchProcessor(t *testing.T) {
 			if bp.pngProc == nil {
 				t.Error("pngProc is nil")
 			}
-			if tt.wantMaxWorkers > 0 && bp.maxWorkers != tt.wantMaxWorkers {
+			if bp.maxWorkers != tt.wantMaxWorkers {
 				t.Errorf("maxWorkers = %d, want %d", bp.maxWorkers, tt.wantMaxWorkers)
 			}
 		})
@@ -251,16 +252,11 @@ func TestDefaultBatchProcessor_ProcessBatch_コンテキストキャンセル(t 
 		t.Fatalf("ProcessBatch() error = %v", err)
 	}
 
-	// At least some results should have errors due to cancellation.
-	hasError := false
-	for _, r := range results {
-		if r.Error != nil {
-			hasError = true
-			break
+	// All results should be populated with an error after cancellation.
+	for i, r := range results {
+		if r.Error == nil {
+			t.Errorf("result[%d] expected error due to context cancellation, got nil", i)
 		}
-	}
-	if !hasError {
-		t.Error("expected at least one error due to context cancellation")
 	}
 }
 

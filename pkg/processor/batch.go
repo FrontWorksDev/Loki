@@ -89,27 +89,19 @@ func (bp *DefaultBatchProcessor) ProcessBatch(ctx context.Context, items []Batch
 	for range workers {
 		wg.Go(func() {
 			for idx := range itemCh {
+				var result BatchResult
+
 				select {
 				case <-ctx.Done():
-					results[idx] = BatchResult{
+					// Context cancelled: mark item as failed but continue draining.
+					result = BatchResult{
 						Item:  items[idx],
 						Error: ctx.Err(),
 					}
-					mu.Lock()
-					progress.Failed++
-					if bp.progressCallback != nil {
-						bp.progressCallback(progress)
-					}
-					mu.Unlock()
-					return
 				default:
+					result = bp.processItem(ctx, items[idx])
 				}
 
-				mu.Lock()
-				progress.Current = items[idx].InputPath
-				mu.Unlock()
-
-				result := bp.processItem(ctx, items[idx])
 				results[idx] = result
 
 				mu.Lock()
@@ -118,15 +110,18 @@ func (bp *DefaultBatchProcessor) ProcessBatch(ctx context.Context, items []Batch
 				} else {
 					progress.Completed++
 				}
-				if bp.progressCallback != nil {
-					bp.progressCallback(Progress{
-						Total:     progress.Total,
-						Completed: progress.Completed,
-						Failed:    progress.Failed,
-						Current:   items[idx].InputPath,
-					})
+				p := Progress{
+					Total:     progress.Total,
+					Completed: progress.Completed,
+					Failed:    progress.Failed,
+					Current:   items[idx].InputPath,
 				}
+				cb := bp.progressCallback
 				mu.Unlock()
+
+				if cb != nil {
+					cb(p)
+				}
 			}
 		})
 	}
@@ -173,6 +168,8 @@ func (bp *DefaultBatchProcessor) processItem(ctx context.Context, item BatchItem
 
 	result, err := proc.Compress(ctx, inFile, outFile, item.Options)
 	if err != nil {
+		outFile.Close()
+		os.Remove(item.OutputPath)
 		return BatchResult{Item: item, Error: err}
 	}
 
