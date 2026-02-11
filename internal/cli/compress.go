@@ -96,7 +96,6 @@ func compressSingleFile(cmd *cobra.Command, inputPath string, opts processor.Com
 	if err != nil {
 		return fmt.Errorf("出力ファイルの作成に失敗しました: %w", err)
 	}
-	defer outFile.Close()
 
 	var proc processor.Processor
 	switch format {
@@ -111,6 +110,11 @@ func compressSingleFile(cmd *cobra.Command, inputPath string, opts processor.Com
 		outFile.Close()
 		os.Remove(outputPath)
 		return fmt.Errorf("圧縮に失敗しました: %w", err)
+	}
+
+	if err := outFile.Close(); err != nil {
+		os.Remove(outputPath)
+		return fmt.Errorf("出力ファイルの書き込みに失敗しました: %w", err)
 	}
 
 	out := cmd.OutOrStdout()

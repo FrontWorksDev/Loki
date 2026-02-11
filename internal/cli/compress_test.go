@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/FrontWorksDev/Loki/pkg/processor"
@@ -315,5 +316,82 @@ func TestRunCompress_品質範囲外(t *testing.T) {
 	err := Execute()
 	if err == nil {
 		t.Error("品質範囲外でエラーが返されるべき")
+	}
+}
+
+func TestRunCompress_単一ファイル成功(t *testing.T) {
+	resetGlobals(t)
+
+	tmpDir := t.TempDir()
+	inputPath := filepath.Join(tmpDir, "test.jpg")
+	jpegData := createTestJPEG(t, 100, 100, 95)
+	if err := os.WriteFile(inputPath, jpegData, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	outputPath := filepath.Join(tmpDir, "output.jpg")
+
+	var buf bytes.Buffer
+	rootCmd.SetOut(&buf)
+	rootCmd.SetErr(&buf)
+	t.Cleanup(func() {
+		rootCmd.SetOut(nil)
+		rootCmd.SetErr(nil)
+	})
+
+	rootCmd.SetArgs([]string{"compress", inputPath, "-o", outputPath})
+
+	err := Execute()
+	if err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	if _, err := os.Stat(outputPath); os.IsNotExist(err) {
+		t.Error("出力ファイルが作成されていません")
+	}
+
+	out := buf.String()
+	if !strings.Contains(out, "圧縮完了") {
+		t.Errorf("出力に「圧縮完了」が含まれていません: %s", out)
+	}
+	if !strings.Contains(out, "削減率") {
+		t.Errorf("出力に「削減率」が含まれていません: %s", out)
+	}
+}
+
+func TestRunCompress_ディレクトリ成功(t *testing.T) {
+	resetGlobals(t)
+
+	inputDir := t.TempDir()
+	outputDir := filepath.Join(t.TempDir(), "output")
+
+	jpegData := createTestJPEG(t, 50, 50, 90)
+	pngData := createTestPNG(t, 50, 50)
+
+	if err := os.WriteFile(filepath.Join(inputDir, "photo.jpg"), jpegData, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(inputDir, "icon.png"), pngData, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	rootCmd.SetOut(&buf)
+	rootCmd.SetErr(&buf)
+	t.Cleanup(func() {
+		rootCmd.SetOut(nil)
+		rootCmd.SetErr(nil)
+	})
+
+	rootCmd.SetArgs([]string{"compress", inputDir, "-r", "-o", outputDir})
+
+	err := Execute()
+	if err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	out := buf.String()
+	if !strings.Contains(out, "完了") {
+		t.Errorf("出力に「完了」が含まれていません: %s", out)
 	}
 }
