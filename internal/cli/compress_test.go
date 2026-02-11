@@ -2,15 +2,18 @@ package cli
 
 import (
 	"bytes"
+	"context"
 	"image"
 	"image/color"
 	"image/jpeg"
 	"image/png"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/FrontWorksDev/Loki/pkg/processor"
+	"github.com/spf13/cobra"
 )
 
 // createTestJPEG creates a test JPEG image with the specified dimensions.
@@ -53,6 +56,27 @@ func createTestPNG(t *testing.T, width, height int) []byte {
 		t.Fatalf("failed to create test PNG: %v", err)
 	}
 	return buf.Bytes()
+}
+
+// newTestCmd creates a cobra.Command suitable for testing (output discarded).
+func newTestCmd() *cobra.Command {
+	cmd := &cobra.Command{}
+	cmd.SetOut(io.Discard)
+	cmd.SetErr(io.Discard)
+	cmd.SetContext(context.Background())
+	return cmd
+}
+
+// resetGlobals resets all global flag variables to their defaults.
+func resetGlobals(t *testing.T) {
+	t.Helper()
+	t.Cleanup(func() {
+		quality = 0
+		level = "medium"
+		output = ""
+		recursive = false
+		rootCmd.SetArgs([]string{})
+	})
 }
 
 func TestParseCompressionLevel(t *testing.T) {
@@ -144,6 +168,8 @@ func TestDefaultOutputPath(t *testing.T) {
 }
 
 func TestCompressSingleFile_JPEG(t *testing.T) {
+	resetGlobals(t)
+
 	tmpDir := t.TempDir()
 	inputPath := filepath.Join(tmpDir, "test.jpg")
 	jpegData := createTestJPEG(t, 100, 100, 95)
@@ -153,9 +179,9 @@ func TestCompressSingleFile_JPEG(t *testing.T) {
 
 	outputPath := filepath.Join(tmpDir, "output.jpg")
 	output = outputPath
-	defer func() { output = "" }()
 
-	err := compressSingleFile(inputPath, processor.DefaultCompressOptions())
+	cmd := newTestCmd()
+	err := compressSingleFile(cmd, inputPath, processor.DefaultCompressOptions())
 	if err != nil {
 		t.Fatalf("compressSingleFile() error = %v", err)
 	}
@@ -166,6 +192,8 @@ func TestCompressSingleFile_JPEG(t *testing.T) {
 }
 
 func TestCompressSingleFile_PNG(t *testing.T) {
+	resetGlobals(t)
+
 	tmpDir := t.TempDir()
 	inputPath := filepath.Join(tmpDir, "test.png")
 	pngData := createTestPNG(t, 100, 100)
@@ -175,9 +203,9 @@ func TestCompressSingleFile_PNG(t *testing.T) {
 
 	outputPath := filepath.Join(tmpDir, "output.png")
 	output = outputPath
-	defer func() { output = "" }()
 
-	err := compressSingleFile(inputPath, processor.DefaultCompressOptions())
+	cmd := newTestCmd()
+	err := compressSingleFile(cmd, inputPath, processor.DefaultCompressOptions())
 	if err != nil {
 		t.Fatalf("compressSingleFile() error = %v", err)
 	}
@@ -188,6 +216,8 @@ func TestCompressSingleFile_PNG(t *testing.T) {
 }
 
 func TestCompressDirectory(t *testing.T) {
+	resetGlobals(t)
+
 	inputDir := t.TempDir()
 	outputDir := t.TempDir()
 
@@ -203,17 +233,13 @@ func TestCompressDirectory(t *testing.T) {
 
 	output = outputDir
 	recursive = true
-	defer func() {
-		output = ""
-		recursive = false
-	}()
 
-	err := compressDirectory(inputDir, processor.DefaultCompressOptions())
+	cmd := newTestCmd()
+	err := compressDirectory(cmd, inputDir, processor.DefaultCompressOptions())
 	if err != nil {
 		t.Fatalf("compressDirectory() error = %v", err)
 	}
 
-	// 出力ファイルの存在確認
 	if _, err := os.Stat(filepath.Join(outputDir, "photo.jpg")); os.IsNotExist(err) {
 		t.Error("photo.jpg が出力されていません")
 	}
@@ -223,8 +249,9 @@ func TestCompressDirectory(t *testing.T) {
 }
 
 func TestRunCompress_引数なし(t *testing.T) {
+	resetGlobals(t)
+
 	rootCmd.SetArgs([]string{"compress"})
-	defer rootCmd.SetArgs(nil)
 
 	err := Execute()
 	if err == nil {
@@ -233,8 +260,9 @@ func TestRunCompress_引数なし(t *testing.T) {
 }
 
 func TestRunCompress_存在しないファイル(t *testing.T) {
+	resetGlobals(t)
+
 	rootCmd.SetArgs([]string{"compress", "/nonexistent/file.jpg"})
-	defer rootCmd.SetArgs(nil)
 
 	err := Execute()
 	if err == nil {
@@ -243,13 +271,10 @@ func TestRunCompress_存在しないファイル(t *testing.T) {
 }
 
 func TestRunCompress_ディレクトリにrecursiveなし(t *testing.T) {
+	resetGlobals(t)
+
 	tmpDir := t.TempDir()
-
-	recursive = false
-	defer func() { recursive = false }()
-
 	rootCmd.SetArgs([]string{"compress", tmpDir})
-	defer rootCmd.SetArgs(nil)
 
 	err := Execute()
 	if err == nil {
@@ -258,6 +283,8 @@ func TestRunCompress_ディレクトリにrecursiveなし(t *testing.T) {
 }
 
 func TestRunCompress_不正レベル(t *testing.T) {
+	resetGlobals(t)
+
 	tmpDir := t.TempDir()
 	inputPath := filepath.Join(tmpDir, "test.jpg")
 	jpegData := createTestJPEG(t, 10, 10, 80)
@@ -266,10 +293,27 @@ func TestRunCompress_不正レベル(t *testing.T) {
 	}
 
 	rootCmd.SetArgs([]string{"compress", inputPath, "--level", "wrong"})
-	defer rootCmd.SetArgs(nil)
 
 	err := Execute()
 	if err == nil {
 		t.Error("不正なレベルでエラーが返されるべき")
+	}
+}
+
+func TestRunCompress_品質範囲外(t *testing.T) {
+	resetGlobals(t)
+
+	tmpDir := t.TempDir()
+	inputPath := filepath.Join(tmpDir, "test.jpg")
+	jpegData := createTestJPEG(t, 10, 10, 80)
+	if err := os.WriteFile(inputPath, jpegData, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	rootCmd.SetArgs([]string{"compress", inputPath, "--quality", "150"})
+
+	err := Execute()
+	if err == nil {
+		t.Error("品質範囲外でエラーが返されるべき")
 	}
 }

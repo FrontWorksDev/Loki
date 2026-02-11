@@ -6,7 +6,7 @@ import (
 
 func TestExecute_ヘルプ表示(t *testing.T) {
 	rootCmd.SetArgs([]string{"--help"})
-	defer rootCmd.SetArgs(nil)
+	t.Cleanup(func() { rootCmd.SetArgs([]string{}) })
 
 	err := Execute()
 	if err != nil {
@@ -16,7 +16,7 @@ func TestExecute_ヘルプ表示(t *testing.T) {
 
 func TestExecute_バージョン表示(t *testing.T) {
 	rootCmd.SetArgs([]string{"--version"})
-	defer rootCmd.SetArgs(nil)
+	t.Cleanup(func() { rootCmd.SetArgs([]string{}) })
 
 	err := Execute()
 	if err != nil {

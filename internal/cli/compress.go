@@ -1,7 +1,6 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -57,18 +56,22 @@ func runCompress(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if quality != 0 && (quality < 1 || quality > 100) {
+		return fmt.Errorf("品質は1〜100の範囲で指定してください (指定値: %d)", quality)
+	}
+
 	opts := processor.CompressOptions{
 		Quality: quality,
 		Level:   compLevel,
 	}
 
 	if info.IsDir() {
-		return compressDirectory(inputPath, opts)
+		return compressDirectory(cmd, inputPath, opts)
 	}
-	return compressSingleFile(inputPath, opts)
+	return compressSingleFile(cmd, inputPath, opts)
 }
 
-func compressSingleFile(inputPath string, opts processor.CompressOptions) error {
+func compressSingleFile(cmd *cobra.Command, inputPath string, opts processor.CompressOptions) error {
 	format, err := detectFormat(inputPath)
 	if err != nil {
 		return err
@@ -103,29 +106,30 @@ func compressSingleFile(inputPath string, opts processor.CompressOptions) error 
 		proc = processor.NewPNGProcessor()
 	}
 
-	result, err := proc.Compress(context.Background(), inFile, outFile, opts)
+	result, err := proc.Compress(cmd.Context(), inFile, outFile, opts)
 	if err != nil {
 		outFile.Close()
 		os.Remove(outputPath)
 		return fmt.Errorf("圧縮に失敗しました: %w", err)
 	}
 
-	fmt.Fprintf(os.Stdout, "圧縮完了: %s → %s\n", inputPath, outputPath)
-	fmt.Fprintf(os.Stdout, "  元サイズ: %d bytes\n", result.OriginalSize)
-	fmt.Fprintf(os.Stdout, "  圧縮後: %d bytes\n", result.CompressedSize)
-	fmt.Fprintf(os.Stdout, "  削減率: %.1f%%\n", result.SavedPercentage())
+	out := cmd.OutOrStdout()
+	fmt.Fprintf(out, "圧縮完了: %s → %s\n", inputPath, outputPath)
+	fmt.Fprintf(out, "  元サイズ: %d bytes\n", result.OriginalSize)
+	fmt.Fprintf(out, "  圧縮後: %d bytes\n", result.CompressedSize)
+	fmt.Fprintf(out, "  削減率: %.1f%%\n", result.SavedPercentage())
 
 	return nil
 }
 
-func compressDirectory(inputDir string, opts processor.CompressOptions) error {
+func compressDirectory(cmd *cobra.Command, inputDir string, opts processor.CompressOptions) error {
 	if !recursive {
 		return fmt.Errorf("ディレクトリを処理するには --recursive (-r) フラグが必要です")
 	}
 
 	outputDir := output
 	if outputDir == "" {
-		outputDir = strings.TrimRight(inputDir, string(filepath.Separator)) + "_compressed"
+		outputDir = filepath.Clean(inputDir) + "_compressed"
 	}
 
 	items, err := processor.ScanDirectory(inputDir, outputDir, processor.WithCompressOptions(opts))
@@ -133,20 +137,23 @@ func compressDirectory(inputDir string, opts processor.CompressOptions) error {
 		return fmt.Errorf("ディレクトリのスキャンに失敗しました: %w", err)
 	}
 
+	out := cmd.OutOrStdout()
+	errOut := cmd.ErrOrStderr()
+
 	if len(items) == 0 {
-		fmt.Fprintln(os.Stdout, "対象の画像ファイルが見つかりませんでした")
+		fmt.Fprintln(out, "対象の画像ファイルが見つかりませんでした")
 		return nil
 	}
 
-	fmt.Fprintf(os.Stdout, "%d 個の画像ファイルを処理します...\n", len(items))
+	fmt.Fprintf(out, "%d 個の画像ファイルを処理します...\n", len(items))
 
 	bp := processor.NewDefaultBatchProcessor(
 		processor.WithProgressCallback(func(p processor.Progress) {
-			fmt.Fprintf(os.Stdout, "  [%d/%d] %s\n", p.Completed+p.Failed, p.Total, p.Current)
+			fmt.Fprintf(out, "  [%d/%d] %s\n", p.Completed+p.Failed, p.Total, p.Current)
 		}),
 	)
 
-	results, err := bp.ProcessBatch(context.Background(), items)
+	results, err := bp.ProcessBatch(cmd.Context(), items)
 	if err != nil {
 		return fmt.Errorf("バッチ処理に失敗しました: %w", err)
 	}
@@ -158,11 +165,15 @@ func compressDirectory(inputDir string, opts processor.CompressOptions) error {
 			successCount++
 		} else {
 			failCount++
-			fmt.Fprintf(os.Stderr, "  エラー: %s: %v\n", r.Item.InputPath, r.Error)
+			fmt.Fprintf(errOut, "  エラー: %s: %v\n", r.Item.InputPath, r.Error)
 		}
 	}
 
-	fmt.Fprintf(os.Stdout, "完了: 成功 %d, 失敗 %d\n", successCount, failCount)
+	fmt.Fprintf(out, "完了: 成功 %d, 失敗 %d\n", successCount, failCount)
+
+	if failCount > 0 {
+		return fmt.Errorf("%d 件の画像の圧縮に失敗しました", failCount)
+	}
 
 	return nil
 }
@@ -200,3 +211,4 @@ func defaultOutputPath(inputPath string) string {
 	base := strings.TrimSuffix(inputPath, ext)
 	return base + "_compressed" + ext
 }
+
