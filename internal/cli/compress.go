@@ -6,7 +6,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/FrontWorksDev/Loki/internal/cli/tui"
 	"github.com/FrontWorksDev/Loki/pkg/processor"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 )
 
@@ -15,6 +17,7 @@ var (
 	level     string
 	output    string
 	recursive bool
+	useTUI    bool
 )
 
 var compressCmd = &cobra.Command{
@@ -38,6 +41,7 @@ func init() {
 	compressCmd.Flags().StringVarP(&level, "level", "l", "medium", "圧縮レベル (low/medium/high)")
 	compressCmd.Flags().StringVarP(&output, "output", "o", "", "出力パス (省略時は自動生成)")
 	compressCmd.Flags().BoolVarP(&recursive, "recursive", "r", false, "ディレクトリを再帰的に処理する")
+	compressCmd.Flags().BoolVar(&useTUI, "tui", false, "TUIモードでプログレスバーを表示する")
 }
 
 func runCompress(cmd *cobra.Command, args []string) error {
@@ -142,12 +146,21 @@ func compressDirectory(cmd *cobra.Command, inputDir string, opts processor.Compr
 	}
 
 	out := cmd.OutOrStdout()
-	errOut := cmd.ErrOrStderr()
 
 	if len(items) == 0 {
 		fmt.Fprintln(out, "対象の画像ファイルが見つかりませんでした")
 		return nil
 	}
+
+	if useTUI {
+		return compressDirectoryWithTUI(cmd, items)
+	}
+	return compressDirectoryWithText(cmd, items)
+}
+
+func compressDirectoryWithText(cmd *cobra.Command, items []processor.BatchItem) error {
+	out := cmd.OutOrStdout()
+	errOut := cmd.ErrOrStderr()
 
 	fmt.Fprintf(out, "%d 個の画像ファイルを処理します...\n", len(items))
 
@@ -177,6 +190,47 @@ func compressDirectory(cmd *cobra.Command, inputDir string, opts processor.Compr
 
 	if failCount > 0 {
 		return fmt.Errorf("%d 件の画像の圧縮に失敗しました", failCount)
+	}
+
+	return nil
+}
+
+func compressDirectoryWithTUI(cmd *cobra.Command, items []processor.BatchItem) error {
+	m := tui.NewModel()
+	p := tea.NewProgram(m)
+
+	go func() {
+		p.Send(tui.BatchStartMsg{TotalFiles: len(items)})
+
+		bp := processor.NewDefaultBatchProcessor(
+			processor.WithProgressCallback(func(prog processor.Progress) {
+				p.Send(tui.ProgressMsg{Progress: prog})
+			}),
+		)
+
+		results, err := bp.ProcessBatch(cmd.Context(), items)
+		if err != nil {
+			p.Send(tui.BatchErrorMsg{Err: err})
+			return
+		}
+
+		p.Send(tui.BatchCompleteMsg{
+			Results: results,
+		})
+	}()
+
+	finalModel, err := p.Run()
+	if err != nil {
+		return fmt.Errorf("TUIの実行に失敗しました: %w", err)
+	}
+
+	fm := finalModel.(tui.Model)
+	if fm.Err() != nil {
+		return fmt.Errorf("バッチ処理に失敗しました: %w", fm.Err())
+	}
+
+	if fm.Failed() > 0 {
+		return fmt.Errorf("%d 件の画像の圧縮に失敗しました", fm.Failed())
 	}
 
 	return nil
