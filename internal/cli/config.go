@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -25,19 +26,17 @@ func initConfig() {
 	} else {
 		// Search for config in home directory
 		home, err := os.UserHomeDir()
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			return
+		if err == nil {
+			viper.AddConfigPath(home)
+			viper.SetConfigName(".image-compresser")
+			viper.SetConfigType("yaml")
 		}
-
-		viper.AddConfigPath(home)
-		viper.SetConfigName(".image-compresser")
-		viper.SetConfigType("yaml")
 	}
 
 	// Read config file (ignore "not found" error)
 	if err := viper.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+		var notFoundErr viper.ConfigFileNotFoundError
+		if !errors.As(err, &notFoundErr) {
 			// Only report errors other than "not found"
 			if cfgFile != "" {
 				// If explicitly specified, report the error
