@@ -76,6 +76,7 @@ func resetGlobals(t *testing.T) {
 		level = "medium"
 		output = ""
 		recursive = false
+		useTUI = false
 		rootCmd.SetArgs([]string{})
 	})
 }
@@ -246,6 +247,16 @@ func TestCompressDirectory(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(outputDir, "icon.png")); os.IsNotExist(err) {
 		t.Error("icon.png が出力されていません")
+	}
+}
+
+func TestTUIフラグ登録(t *testing.T) {
+	f := compressCmd.Flags().Lookup("tui")
+	if f == nil {
+		t.Fatal("--tui フラグが登録されていません")
+	}
+	if f.DefValue != "false" {
+		t.Errorf("--tui のデフォルト値 = %q, want %q", f.DefValue, "false")
 	}
 }
 
