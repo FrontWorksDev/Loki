@@ -1,0 +1,6 @@
+# Loki デフォルト設定
+compress:
+  quality: 0          # JPEG品質 (1-100)。0の場合はlevelに基づく
+  level: "medium"     # 圧縮レベル (low/medium/high)
+  output: ""          # 出力パス (空の場合は自動生成: {name}_compressed.{ext})
+  recursive: false    # ディレクトリを再帰的に処理する

@@ -10,6 +10,7 @@ import (
 	"github.com/FrontWorksDev/Loki/pkg/processor"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var (
@@ -44,6 +45,15 @@ func init() {
 	compressCmd.Flags().BoolVar(&useTUI, "tui", false, "TUIモードでプログレスバーを表示する")
 }
 
+// bindCompressFlags binds compress command flags to Viper keys.
+// Called from initConfig() so bindings are re-established after viper.Reset().
+func bindCompressFlags() {
+	_ = viper.BindPFlag("compress.quality", compressCmd.Flags().Lookup("quality"))
+	_ = viper.BindPFlag("compress.level", compressCmd.Flags().Lookup("level"))
+	_ = viper.BindPFlag("compress.output", compressCmd.Flags().Lookup("output"))
+	_ = viper.BindPFlag("compress.recursive", compressCmd.Flags().Lookup("recursive"))
+}
+
 func runCompress(cmd *cobra.Command, args []string) error {
 	inputPath := args[0]
 
@@ -55,17 +65,20 @@ func runCompress(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("入力パスの確認に失敗しました: %w", err)
 	}
 
-	compLevel, err := parseCompressionLevel(level)
+	q := viper.GetInt("compress.quality")
+	l := viper.GetString("compress.level")
+
+	compLevel, err := parseCompressionLevel(l)
 	if err != nil {
 		return err
 	}
 
-	if quality != 0 && (quality < 1 || quality > 100) {
-		return fmt.Errorf("品質は1〜100の範囲で指定してください (指定値: %d)", quality)
+	if q != 0 && (q < 1 || q > 100) {
+		return fmt.Errorf("品質は1〜100の範囲で指定してください (指定値: %d)", q)
 	}
 
 	opts := processor.CompressOptions{
-		Quality: quality,
+		Quality: q,
 		Level:   compLevel,
 	}
 
@@ -81,7 +94,7 @@ func compressSingleFile(cmd *cobra.Command, inputPath string, opts processor.Com
 		return err
 	}
 
-	outputPath := output
+	outputPath := viper.GetString("compress.output")
 	if outputPath == "" {
 		outputPath = defaultOutputPath(inputPath)
 	}
@@ -131,11 +144,12 @@ func compressSingleFile(cmd *cobra.Command, inputPath string, opts processor.Com
 }
 
 func compressDirectory(cmd *cobra.Command, inputDir string, opts processor.CompressOptions) error {
-	if !recursive {
+	r := viper.GetBool("compress.recursive")
+	if !r {
 		return fmt.Errorf("ディレクトリを処理するには --recursive (-r) フラグが必要です")
 	}
 
-	outputDir := output
+	outputDir := viper.GetString("compress.output")
 	if outputDir == "" {
 		outputDir = filepath.Clean(inputDir) + "_compressed"
 	}
@@ -177,12 +191,12 @@ func compressDirectoryWithText(cmd *cobra.Command, items []processor.BatchItem) 
 
 	successCount := 0
 	failCount := 0
-	for _, r := range results {
-		if r.IsSuccess() {
+	for _, res := range results {
+		if res.IsSuccess() {
 			successCount++
 		} else {
 			failCount++
-			fmt.Fprintf(errOut, "  エラー: %s: %v\n", r.Item.InputPath, r.Error)
+			fmt.Fprintf(errOut, "  エラー: %s: %v\n", res.Item.InputPath, res.Error)
 		}
 	}
 
@@ -269,4 +283,3 @@ func defaultOutputPath(inputPath string) string {
 	base := strings.TrimSuffix(inputPath, ext)
 	return base + "_compressed" + ext
 }
-

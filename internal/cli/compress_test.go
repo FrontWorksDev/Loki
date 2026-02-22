@@ -15,6 +15,7 @@ import (
 
 	"github.com/FrontWorksDev/Loki/pkg/processor"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // createTestJPEG creates a test JPEG image with the specified dimensions.
@@ -77,7 +78,18 @@ func resetGlobals(t *testing.T) {
 		output = ""
 		recursive = false
 		useTUI = false
+		cfgFile = ""
 		rootCmd.SetArgs([]string{})
+		// Reset pflag Changed state so flags don't carry over between tests
+		for _, name := range []string{"quality", "level", "output", "recursive", "tui"} {
+			if f := compressCmd.Flags().Lookup(name); f != nil {
+				f.Changed = false
+			}
+		}
+		if f := rootCmd.PersistentFlags().Lookup("config"); f != nil {
+			f.Changed = false
+		}
+		viper.Reset()
 	})
 }
 
@@ -180,7 +192,7 @@ func TestCompressSingleFile_JPEG(t *testing.T) {
 	}
 
 	outputPath := filepath.Join(tmpDir, "output.jpg")
-	output = outputPath
+	viper.Set("compress.output", outputPath)
 
 	cmd := newTestCmd()
 	err := compressSingleFile(cmd, inputPath, processor.DefaultCompressOptions())
@@ -204,7 +216,7 @@ func TestCompressSingleFile_PNG(t *testing.T) {
 	}
 
 	outputPath := filepath.Join(tmpDir, "output.png")
-	output = outputPath
+	viper.Set("compress.output", outputPath)
 
 	cmd := newTestCmd()
 	err := compressSingleFile(cmd, inputPath, processor.DefaultCompressOptions())
@@ -233,8 +245,8 @@ func TestCompressDirectory(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	output = outputDir
-	recursive = true
+	viper.Set("compress.output", outputDir)
+	viper.Set("compress.recursive", true)
 
 	cmd := newTestCmd()
 	err := compressDirectory(cmd, inputDir, processor.DefaultCompressOptions())

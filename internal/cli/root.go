@@ -11,6 +11,8 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
+	cobra.OnInitialize(initConfig)
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "設定ファイルのパス (デフォルト: ~/.image-compresser.yaml)")
 	rootCmd.AddCommand(compressCmd)
 }
 
