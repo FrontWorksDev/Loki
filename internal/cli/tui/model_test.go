@@ -97,26 +97,30 @@ func TestModel_BatchCompleteMsg(t *testing.T) {
 	started, _ := m.Update(BatchStartMsg{TotalFiles: 3})
 	m = started.(Model)
 
+	// ProgressMsg で内部カウンタを蓄積（実際の処理フローと同様）
+	updated, _ := m.Update(ProgressMsg{
+		Progress: processor.Progress{Total: 3, Completed: 2, Failed: 1, Current: "c.jpg"},
+	})
+	m = updated.(Model)
+
 	results := []processor.BatchResult{
 		{Item: processor.BatchItem{InputPath: "a.jpg"}, Result: &processor.Result{}},
 		{Item: processor.BatchItem{InputPath: "b.jpg"}, Result: &processor.Result{}},
 		{Item: processor.BatchItem{InputPath: "c.jpg"}, Error: errors.New("decode error")},
 	}
-	updated, _ := m.Update(BatchCompleteMsg{
-		Results:      results,
-		SuccessCount: 2,
-		FailCount:    1,
+	updated, _ = m.Update(BatchCompleteMsg{
+		Results: results,
 	})
 	um := updated.(Model)
 
 	if um.State() != StateCompleted {
 		t.Errorf("State() = %v, want StateCompleted", um.State())
 	}
-	if um.SuccessCount() != 2 {
-		t.Errorf("SuccessCount() = %d, want 2", um.SuccessCount())
+	if um.Completed() != 2 {
+		t.Errorf("Completed() = %d, want 2", um.Completed())
 	}
-	if um.FailCount() != 1 {
-		t.Errorf("FailCount() = %d, want 1", um.FailCount())
+	if um.Failed() != 1 {
+		t.Errorf("Failed() = %d, want 1", um.Failed())
 	}
 }
 
@@ -138,24 +142,17 @@ func TestModel_BatchErrorMsg(t *testing.T) {
 func TestModel_QuitKeys(t *testing.T) {
 	tests := []struct {
 		name string
-		key  string
+		msg  tea.KeyMsg
 	}{
-		{name: "qキー", key: "q"},
-		{name: "ctrl+c", key: "ctrl+c"},
-		{name: "escキー", key: "esc"},
+		{name: "qキー", msg: tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")}},
+		{name: "ctrl+c", msg: tea.KeyMsg{Type: tea.KeyCtrlC}},
+		{name: "escキー", msg: tea.KeyMsg{Type: tea.KeyEscape}},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			m := NewModel()
-			_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(tt.key)})
-
-			// For ctrl+c and esc, use specific key types
-			if tt.key == "ctrl+c" {
-				_, cmd = m.Update(tea.KeyMsg{Type: tea.KeyCtrlC})
-			} else if tt.key == "esc" {
-				_, cmd = m.Update(tea.KeyMsg{Type: tea.KeyEscape})
-			}
+			_, cmd := m.Update(tt.msg)
 
 			if cmd == nil {
 				t.Error("expected a quit command, got nil")
@@ -198,10 +195,12 @@ func TestModel_View(t *testing.T) {
 				m := NewModel()
 				updated, _ := m.Update(BatchStartMsg{TotalFiles: 2})
 				m = updated.(Model)
+				updated, _ = m.Update(ProgressMsg{
+					Progress: processor.Progress{Total: 2, Completed: 2, Failed: 0, Current: "b.jpg"},
+				})
+				m = updated.(Model)
 				updated, _ = m.Update(BatchCompleteMsg{
-					Results:      []processor.BatchResult{},
-					SuccessCount: 2,
-					FailCount:    0,
+					Results: []processor.BatchResult{},
 				})
 				return updated.(Model)
 			},
@@ -213,12 +212,14 @@ func TestModel_View(t *testing.T) {
 				m := NewModel()
 				updated, _ := m.Update(BatchStartMsg{TotalFiles: 2})
 				m = updated.(Model)
+				updated, _ = m.Update(ProgressMsg{
+					Progress: processor.Progress{Total: 2, Completed: 1, Failed: 1, Current: "bad.jpg"},
+				})
+				m = updated.(Model)
 				updated, _ = m.Update(BatchCompleteMsg{
 					Results: []processor.BatchResult{
 						{Item: processor.BatchItem{InputPath: "bad.jpg"}, Error: errors.New("decode error")},
 					},
-					SuccessCount: 1,
-					FailCount:    1,
 				})
 				return updated.(Model)
 			},

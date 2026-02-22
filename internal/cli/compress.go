@@ -214,20 +214,8 @@ func compressDirectoryWithTUI(cmd *cobra.Command, items []processor.BatchItem) e
 			return
 		}
 
-		successCount := 0
-		failCount := 0
-		for _, r := range results {
-			if r.IsSuccess() {
-				successCount++
-			} else {
-				failCount++
-			}
-		}
-
 		p.Send(tui.BatchCompleteMsg{
-			Results:      results,
-			SuccessCount: successCount,
-			FailCount:    failCount,
+			Results: results,
 		})
 	}()
 
@@ -241,8 +229,8 @@ func compressDirectoryWithTUI(cmd *cobra.Command, items []processor.BatchItem) e
 		return fmt.Errorf("バッチ処理に失敗しました: %w", fm.Err())
 	}
 
-	if fm.FailCount() > 0 {
-		return fmt.Errorf("%d 件の画像の圧縮に失敗しました", fm.FailCount())
+	if fm.Failed() > 0 {
+		return fmt.Errorf("%d 件の画像の圧縮に失敗しました", fm.Failed())
 	}
 
 	return nil

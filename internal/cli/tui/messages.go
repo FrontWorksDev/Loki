@@ -15,9 +15,7 @@ type BatchStartMsg struct {
 
 // BatchCompleteMsg notifies the TUI that batch processing has completed.
 type BatchCompleteMsg struct {
-	Results      []processor.BatchResult
-	SuccessCount int
-	FailCount    int
+	Results []processor.BatchResult
 }
 
 // BatchErrorMsg notifies the TUI that an overall batch processing error occurred.

@@ -91,8 +91,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case BatchCompleteMsg:
 		m.state = StateCompleted
-		m.completed = msg.SuccessCount
-		m.failed = msg.FailCount
 		m.results = make([]BatchResultInfo, 0)
 		for _, r := range msg.Results {
 			if r.Error != nil {
@@ -177,16 +175,6 @@ func (m Model) Failed() int {
 // CurrentFile returns the currently processing file name.
 func (m Model) CurrentFile() string {
 	return m.currentFile
-}
-
-// SuccessCount returns the number of successful results after completion.
-func (m Model) SuccessCount() int {
-	return m.completed
-}
-
-// FailCount returns the number of failed results after completion.
-func (m Model) FailCount() int {
-	return m.failed
 }
 
 // Err returns the error if the model is in error state.
