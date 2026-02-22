@@ -608,6 +608,17 @@ func TestScanDirectory_大文字拡張子(t *testing.T) {
 	}
 }
 
+func TestScanDirectory_非ディレクトリ入力(t *testing.T) {
+	// Create a regular file and try to scan it as a directory.
+	tmpDir := t.TempDir()
+	filePath := writeTestFile(t, tmpDir, "notadir.jpg", createTestJPEG(t, 10, 10, 80))
+
+	_, err := ScanDirectory(filePath, t.TempDir())
+	if err == nil {
+		t.Error("ScanDirectory() should return error for non-directory input")
+	}
+}
+
 func TestDefaultBatchProcessor_統合テスト(t *testing.T) {
 	inputDir := t.TempDir()
 	outputDir := t.TempDir()
