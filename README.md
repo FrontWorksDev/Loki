@@ -124,16 +124,15 @@ goimports -w ./...
 ```
 Loki/
 ├── cmd/
-│   └── img-cli/           # CLI アプリケーションのエントリーポイント
+│   ├── img-cli/           # CLI アプリケーションのエントリーポイント
+│   └── tui-demo/          # TUI デモアプリケーション
 ├── internal/
 │   ├── cli/               # CLI コマンド定義・設定管理・TUI 統合
 │   └── imageproc/         # 画像処理ユーティリティ（リサイズ等）
 ├── pkg/
 │   └── processor/         # 画像圧縮コアライブラリ（JPEG/PNG/バッチ処理）
 ├── configs/               # デフォルト設定ファイル
-├── testdata/              # テスト用フィクスチャ
-├── .github/workflows/     # CI/CD（テスト・ビルド）
-└── scripts/               # ビルド・ユーティリティスクリプト
+└── .github/workflows/     # CI/CD（テスト・ビルド）
 ```
 
 ## ライセンス
