@@ -56,21 +56,15 @@ func (p *PNGProcessor) Compress(ctx context.Context, r io.Reader, w io.Writer, o
 		CompressionLevel: opts.Level.ToPNGCompressionLevel(),
 	}
 
-	// Encode to buffer to get compressed size
-	var buf bytes.Buffer
-	if err := encoder.Encode(&buf, img); err != nil {
+	// Encode directly to output via countingWriter
+	cw := &countingWriter{w: w}
+	if err := encoder.Encode(cw, img); err != nil {
 		return nil, fmt.Errorf("failed to encode PNG: %w", err)
-	}
-
-	// Write to output
-	compressedSize := int64(buf.Len())
-	if _, err := io.Copy(w, &buf); err != nil {
-		return nil, fmt.Errorf("failed to write output: %w", err)
 	}
 
 	return &Result{
 		OriginalSize:   originalSize,
-		CompressedSize: compressedSize,
+		CompressedSize: cw.n,
 		Format:         FormatPNG,
 	}, nil
 }
@@ -116,21 +110,15 @@ func (p *PNGProcessor) Convert(ctx context.Context, r io.Reader, w io.Writer, op
 		CompressionLevel: opts.Level.ToPNGCompressionLevel(),
 	}
 
-	// Encode to buffer
-	var buf bytes.Buffer
-	if err := encoder.Encode(&buf, img); err != nil {
+	// Encode directly to output via countingWriter
+	cw := &countingWriter{w: w}
+	if err := encoder.Encode(cw, img); err != nil {
 		return nil, fmt.Errorf("failed to encode PNG: %w", err)
-	}
-
-	// Write to output
-	compressedSize := int64(buf.Len())
-	if _, err := io.Copy(w, &buf); err != nil {
-		return nil, fmt.Errorf("failed to write output: %w", err)
 	}
 
 	return &Result{
 		OriginalSize:   originalSize,
-		CompressedSize: compressedSize,
+		CompressedSize: cw.n,
 		Format:         FormatPNG,
 	}, nil
 }

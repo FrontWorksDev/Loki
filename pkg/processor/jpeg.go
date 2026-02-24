@@ -66,21 +66,15 @@ func (p *JPEGProcessor) Compress(ctx context.Context, r io.Reader, w io.Writer, 
 		}
 	}
 
-	// Encode to buffer to get compressed size
-	var buf bytes.Buffer
-	if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: quality}); err != nil {
+	// Encode directly to output via countingWriter
+	cw := &countingWriter{w: w}
+	if err := jpeg.Encode(cw, img, &jpeg.Options{Quality: quality}); err != nil {
 		return nil, fmt.Errorf("failed to encode JPEG: %w", err)
-	}
-
-	// Write to output
-	compressedSize := int64(buf.Len())
-	if _, err := io.Copy(w, &buf); err != nil {
-		return nil, fmt.Errorf("failed to write output: %w", err)
 	}
 
 	return &Result{
 		OriginalSize:   originalSize,
-		CompressedSize: compressedSize,
+		CompressedSize: cw.n,
 		Format:         FormatJPEG,
 	}, nil
 }
@@ -133,21 +127,15 @@ func (p *JPEGProcessor) Convert(ctx context.Context, r io.Reader, w io.Writer, o
 		quality = 100
 	}
 
-	// Encode to buffer
-	var buf bytes.Buffer
-	if err := jpeg.Encode(&buf, img, &jpeg.Options{Quality: quality}); err != nil {
+	// Encode directly to output via countingWriter
+	cw := &countingWriter{w: w}
+	if err := jpeg.Encode(cw, img, &jpeg.Options{Quality: quality}); err != nil {
 		return nil, fmt.Errorf("failed to encode JPEG: %w", err)
-	}
-
-	// Write to output
-	compressedSize := int64(buf.Len())
-	if _, err := io.Copy(w, &buf); err != nil {
-		return nil, fmt.Errorf("failed to write output: %w", err)
 	}
 
 	return &Result{
 		OriginalSize:   originalSize,
-		CompressedSize: compressedSize,
+		CompressedSize: cw.n,
 		Format:         FormatJPEG,
 	}, nil
 }

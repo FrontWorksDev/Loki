@@ -78,3 +78,59 @@ func TestReadAllWithLimit_ReadErrorNoLimit(t *testing.T) {
 		t.Fatal("readAllWithLimit() should return error on read failure")
 	}
 }
+
+func TestCountingWriter_Write(t *testing.T) {
+	var buf bytes.Buffer
+	cw := &countingWriter{w: &buf}
+
+	data := []byte("hello world")
+	n, err := cw.Write(data)
+	if err != nil {
+		t.Fatalf("countingWriter.Write() error = %v", err)
+	}
+	if n != len(data) {
+		t.Errorf("countingWriter.Write() n = %d, want %d", n, len(data))
+	}
+	if cw.n != int64(len(data)) {
+		t.Errorf("countingWriter.n = %d, want %d", cw.n, len(data))
+	}
+	if !bytes.Equal(buf.Bytes(), data) {
+		t.Errorf("countingWriter wrote %v, want %v", buf.Bytes(), data)
+	}
+}
+
+func TestCountingWriter_MultipleWrites(t *testing.T) {
+	var buf bytes.Buffer
+	cw := &countingWriter{w: &buf}
+
+	data1 := []byte("hello ")
+	data2 := []byte("world")
+
+	if _, err := cw.Write(data1); err != nil {
+		t.Fatalf("Write(data1) error = %v", err)
+	}
+	if _, err := cw.Write(data2); err != nil {
+		t.Fatalf("Write(data2) error = %v", err)
+	}
+
+	expectedTotal := int64(len(data1) + len(data2))
+	if cw.n != expectedTotal {
+		t.Errorf("countingWriter.n = %d, want %d", cw.n, expectedTotal)
+	}
+	if buf.String() != "hello world" {
+		t.Errorf("countingWriter wrote %q, want %q", buf.String(), "hello world")
+	}
+}
+
+func TestCountingWriter_WriteError(t *testing.T) {
+	ew := &errWriter{err: io.ErrClosedPipe}
+	cw := &countingWriter{w: ew}
+
+	_, err := cw.Write([]byte("test"))
+	if err == nil {
+		t.Fatal("countingWriter.Write() should propagate write error")
+	}
+	if !errors.Is(err, io.ErrClosedPipe) {
+		t.Errorf("countingWriter.Write() error = %v, want %v", err, io.ErrClosedPipe)
+	}
+}

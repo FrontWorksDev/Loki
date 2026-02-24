@@ -25,3 +25,15 @@ func readAllWithLimit(r io.Reader, maxSize int64) ([]byte, error) {
 
 	return data, nil
 }
+
+// countingWriter wraps an io.Writer and counts the number of bytes written.
+type countingWriter struct {
+	w io.Writer
+	n int64
+}
+
+func (cw *countingWriter) Write(p []byte) (int, error) {
+	n, err := cw.w.Write(p)
+	cw.n += int64(n)
+	return n, err
+}
