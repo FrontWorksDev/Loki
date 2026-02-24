@@ -183,8 +183,8 @@ func compressDirectoryWithText(cmd *cobra.Command, items []processor.BatchItem) 
 	bp := processor.NewDefaultBatchProcessor(
 		processor.WithProgressCallback(func(p processor.Progress) {
 			mu.Lock()
+			defer mu.Unlock()
 			_, _ = fmt.Fprintf(out, "  [%d/%d] %s\n", p.Completed+p.Failed, p.Total, p.Current)
-			mu.Unlock()
 		}),
 	)
 
