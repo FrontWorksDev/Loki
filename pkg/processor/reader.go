@@ -2,6 +2,7 @@ package processor
 
 import (
 	"io"
+	"math"
 )
 
 // readAllWithLimit reads all data from r, enforcing an optional size limit.
@@ -9,6 +10,11 @@ import (
 // If maxSize > 0, it returns ErrFileTooLarge if the data exceeds maxSize bytes.
 func readAllWithLimit(r io.Reader, maxSize int64) ([]byte, error) {
 	if maxSize <= 0 {
+		return io.ReadAll(r)
+	}
+
+	// Guard against overflow: maxSize+1 would wrap around for math.MaxInt64
+	if maxSize == math.MaxInt64 {
 		return io.ReadAll(r)
 	}
 

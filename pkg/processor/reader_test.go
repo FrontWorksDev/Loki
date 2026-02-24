@@ -4,8 +4,20 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"math"
 	"testing"
 )
+
+func TestReadAllWithLimit_MaxInt64(t *testing.T) {
+	data := []byte("hello world")
+	result, err := readAllWithLimit(bytes.NewReader(data), math.MaxInt64)
+	if err != nil {
+		t.Fatalf("readAllWithLimit() error = %v", err)
+	}
+	if !bytes.Equal(result, data) {
+		t.Errorf("readAllWithLimit() = %v, want %v", result, data)
+	}
+}
 
 func TestReadAllWithLimit_NoLimit(t *testing.T) {
 	data := []byte("hello world")
