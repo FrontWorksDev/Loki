@@ -2,7 +2,18 @@ package processor
 
 import (
 	"context"
+	"errors"
 	"io"
+)
+
+// Errors returned by processor operations.
+var (
+	// ErrPreserveMetadataNotSupported is returned when PreserveMetadata is set to true.
+	// Metadata preservation is not yet implemented.
+	ErrPreserveMetadataNotSupported = errors.New("preserve metadata is not yet supported")
+
+	// ErrFileTooLarge is returned when the input file exceeds the MaxFileSize limit.
+	ErrFileTooLarge = errors.New("file size exceeds maximum allowed size")
 )
 
 // Processor defines the interface for image processing operations.
@@ -30,8 +41,23 @@ type CompressOptions struct {
 	Level CompressionLevel
 
 	// PreserveMetadata indicates whether to preserve image metadata.
-	// TODO: Not yet implemented. Reserved for future use.
+	// Not yet implemented. Setting this to true will cause Validate() to return an error.
 	PreserveMetadata bool
+
+	// MaxFileSize specifies the maximum allowed input file size in bytes.
+	// 0 means no limit.
+	MaxFileSize int64
+}
+
+// Validate validates the CompressOptions and returns an error if any option is unsupported.
+func (o CompressOptions) Validate() error {
+	if o.PreserveMetadata {
+		return ErrPreserveMetadataNotSupported
+	}
+	if o.MaxFileSize < 0 {
+		return errors.New("max file size must be non-negative")
+	}
+	return nil
 }
 
 // DefaultCompressOptions returns the default compression options.

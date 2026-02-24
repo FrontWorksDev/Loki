@@ -248,6 +248,151 @@ func TestPNGProcessor_Compress_CompressionLevels(t *testing.T) {
 	t.Logf("Compression sizes: Low=%d, Medium=%d, High=%d", sizes[0], sizes[1], sizes[2])
 }
 
+func TestPNGProcessor_Compress_ContextCanceledAfterRead(t *testing.T) {
+	p := NewPNGProcessor()
+	input := createTestPNG(t, 50, 50)
+	ctx, cancel := context.WithCancel(context.Background())
+	reader := &cancelAfterReadReader{r: bytes.NewReader(input), cancel: cancel}
+	var output bytes.Buffer
+
+	_, err := p.Compress(ctx, reader, &output, DefaultCompressOptions())
+	if err == nil {
+		t.Error("Compress() should return error when context is canceled after read")
+	}
+}
+
+func TestPNGProcessor_Convert_ContextCanceledAfterRead(t *testing.T) {
+	p := NewPNGProcessor()
+	input := createTestJPEG(t, 50, 50, 95)
+	ctx, cancel := context.WithCancel(context.Background())
+	reader := &cancelAfterReadReader{r: bytes.NewReader(input), cancel: cancel}
+	var output bytes.Buffer
+
+	_, err := p.Convert(ctx, reader, &output, DefaultConvertOptions(FormatPNG))
+	if err == nil {
+		t.Error("Convert() should return error when context is canceled after read")
+	}
+}
+
+func TestPNGProcessor_Compress_ContextCanceledAfterDecode(t *testing.T) {
+	p := NewPNGProcessor()
+	input := createTestPNG(t, 50, 50)
+	ctx, cancel := context.WithCancel(context.Background())
+	reader := &slowReader{r: bytes.NewReader(input), cancel: cancel, threshold: len(input) - 1}
+	var output bytes.Buffer
+
+	_, err := p.Compress(ctx, reader, &output, DefaultCompressOptions())
+	if err == nil {
+		t.Error("Compress() should return error when context is canceled after decode")
+	}
+}
+
+func TestPNGProcessor_Convert_ContextCanceledAfterDecode(t *testing.T) {
+	p := NewPNGProcessor()
+	input := createTestJPEG(t, 50, 50, 95)
+	ctx, cancel := context.WithCancel(context.Background())
+	reader := &slowReader{r: bytes.NewReader(input), cancel: cancel, threshold: len(input) - 1}
+	var output bytes.Buffer
+
+	_, err := p.Convert(ctx, reader, &output, DefaultConvertOptions(FormatPNG))
+	if err == nil {
+		t.Error("Convert() should return error when context is canceled after decode")
+	}
+}
+
+func TestPNGProcessor_Compress_MaxFileSize(t *testing.T) {
+	p := NewPNGProcessor()
+	input := createTestPNG(t, 100, 100)
+
+	t.Run("Within limit", func(t *testing.T) {
+		reader := bytes.NewReader(input)
+		var output bytes.Buffer
+		opts := CompressOptions{
+			MaxFileSize: int64(len(input) + 1),
+		}
+		result, err := p.Compress(context.Background(), reader, &output, opts)
+		if err != nil {
+			t.Fatalf("Compress() error = %v", err)
+		}
+		if result.OriginalSize != int64(len(input)) {
+			t.Errorf("OriginalSize = %d, want %d", result.OriginalSize, len(input))
+		}
+	})
+
+	t.Run("Exceeds limit", func(t *testing.T) {
+		reader := bytes.NewReader(input)
+		var output bytes.Buffer
+		opts := CompressOptions{
+			MaxFileSize: 1, // Very small limit
+		}
+		_, err := p.Compress(context.Background(), reader, &output, opts)
+		if err == nil {
+			t.Fatal("Compress() should return error when file exceeds MaxFileSize")
+		}
+	})
+}
+
+func TestPNGProcessor_Compress_PreserveMetadata(t *testing.T) {
+	p := NewPNGProcessor()
+	input := createTestPNG(t, 50, 50)
+	reader := bytes.NewReader(input)
+	var output bytes.Buffer
+
+	opts := CompressOptions{
+		Level:            CompressionMedium,
+		PreserveMetadata: true,
+	}
+	_, err := p.Compress(context.Background(), reader, &output, opts)
+	if err == nil {
+		t.Error("Compress() should return error when PreserveMetadata is true")
+	}
+	if err != ErrPreserveMetadataNotSupported {
+		t.Errorf("Compress() error = %v, want %v", err, ErrPreserveMetadataNotSupported)
+	}
+}
+
+func TestPNGProcessor_Convert_MaxFileSize(t *testing.T) {
+	p := NewPNGProcessor()
+	input := createTestJPEG(t, 50, 50, 95)
+
+	t.Run("Exceeds limit", func(t *testing.T) {
+		reader := bytes.NewReader(input)
+		var output bytes.Buffer
+		opts := ConvertOptions{
+			Format: FormatPNG,
+			CompressOptions: CompressOptions{
+				MaxFileSize: 1,
+			},
+		}
+		_, err := p.Convert(context.Background(), reader, &output, opts)
+		if err == nil {
+			t.Fatal("Convert() should return error when file exceeds MaxFileSize")
+		}
+	})
+}
+
+func TestPNGProcessor_Convert_PreserveMetadata(t *testing.T) {
+	p := NewPNGProcessor()
+	input := createTestJPEG(t, 50, 50, 95)
+	reader := bytes.NewReader(input)
+	var output bytes.Buffer
+
+	opts := ConvertOptions{
+		Format: FormatPNG,
+		CompressOptions: CompressOptions{
+			Level:            CompressionMedium,
+			PreserveMetadata: true,
+		},
+	}
+	_, err := p.Convert(context.Background(), reader, &output, opts)
+	if err == nil {
+		t.Error("Convert() should return error when PreserveMetadata is true")
+	}
+	if err != ErrPreserveMetadataNotSupported {
+		t.Errorf("Convert() error = %v, want %v", err, ErrPreserveMetadataNotSupported)
+	}
+}
+
 func TestPNGProcessor_Convert_FormatMismatch(t *testing.T) {
 	p := NewPNGProcessor()
 	input := createTestJPEG(t, 100, 100, 95)

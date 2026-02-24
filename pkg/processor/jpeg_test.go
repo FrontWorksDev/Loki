@@ -306,6 +306,221 @@ func TestJPEGProcessor_Compress_QualityBounds(t *testing.T) {
 	}
 }
 
+// cancelAfterReadReader wraps a reader and cancels the context after all data is read.
+type cancelAfterReadReader struct {
+	r      *bytes.Reader
+	cancel context.CancelFunc
+}
+
+func (r *cancelAfterReadReader) Read(p []byte) (int, error) {
+	n, err := r.r.Read(p)
+	if err != nil {
+		r.cancel()
+	}
+	return n, err
+}
+
+func TestJPEGProcessor_Compress_ContextCanceledAfterRead(t *testing.T) {
+	p := NewJPEGProcessor()
+	input := createTestJPEG(t, 50, 50, 95)
+	ctx, cancel := context.WithCancel(context.Background())
+	reader := &cancelAfterReadReader{r: bytes.NewReader(input), cancel: cancel}
+	var output bytes.Buffer
+
+	_, err := p.Compress(ctx, reader, &output, DefaultCompressOptions())
+	if err == nil {
+		t.Error("Compress() should return error when context is canceled after read")
+	}
+}
+
+func TestJPEGProcessor_Convert_ContextCanceledAfterRead(t *testing.T) {
+	p := NewJPEGProcessor()
+	input := createTestPNG(t, 50, 50)
+	ctx, cancel := context.WithCancel(context.Background())
+	reader := &cancelAfterReadReader{r: bytes.NewReader(input), cancel: cancel}
+	var output bytes.Buffer
+
+	_, err := p.Convert(ctx, reader, &output, DefaultConvertOptions(FormatJPEG))
+	if err == nil {
+		t.Error("Convert() should return error when context is canceled after read")
+	}
+}
+
+// slowReader wraps a reader and introduces a delay after a certain number of bytes,
+// then cancels the context. This allows testing context cancellation between decode and encode.
+type slowReader struct {
+	r         *bytes.Reader
+	cancel    context.CancelFunc
+	threshold int
+	read      int
+	canceled  bool
+}
+
+func (r *slowReader) Read(p []byte) (int, error) {
+	n, err := r.r.Read(p)
+	r.read += n
+	if !r.canceled && r.read >= r.threshold {
+		r.cancel()
+		r.canceled = true
+	}
+	return n, err
+}
+
+func TestJPEGProcessor_Compress_ContextCanceledAfterDecode(t *testing.T) {
+	p := NewJPEGProcessor()
+	input := createTestJPEG(t, 50, 50, 95)
+	ctx, cancel := context.WithCancel(context.Background())
+	// Cancel after reading most of the data (after decode will succeed)
+	reader := &slowReader{r: bytes.NewReader(input), cancel: cancel, threshold: len(input) - 1}
+	var output bytes.Buffer
+
+	_, err := p.Compress(ctx, reader, &output, DefaultCompressOptions())
+	if err == nil {
+		t.Error("Compress() should return error when context is canceled after decode")
+	}
+}
+
+func TestJPEGProcessor_Convert_ContextCanceledAfterDecode(t *testing.T) {
+	p := NewJPEGProcessor()
+	input := createTestPNG(t, 50, 50)
+	ctx, cancel := context.WithCancel(context.Background())
+	reader := &slowReader{r: bytes.NewReader(input), cancel: cancel, threshold: len(input) - 1}
+	var output bytes.Buffer
+
+	_, err := p.Convert(ctx, reader, &output, DefaultConvertOptions(FormatJPEG))
+	if err == nil {
+		t.Error("Convert() should return error when context is canceled after decode")
+	}
+}
+
+func TestJPEGProcessor_Convert_QualityBounds(t *testing.T) {
+	p := NewJPEGProcessor()
+
+	tests := []struct {
+		name    string
+		quality int
+	}{
+		{"Quality below minimum", -10},
+		{"Quality above maximum", 150},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			input := createTestPNG(t, 50, 50)
+			reader := bytes.NewReader(input)
+			var output bytes.Buffer
+
+			opts := ConvertOptions{
+				Format: FormatJPEG,
+				CompressOptions: CompressOptions{
+					Quality: tt.quality,
+				},
+			}
+			result, err := p.Convert(context.Background(), reader, &output, opts)
+			if err != nil {
+				t.Errorf("Convert() error = %v", err)
+				return
+			}
+			if result.CompressedSize == 0 {
+				t.Error("CompressedSize should not be 0")
+			}
+		})
+	}
+}
+
+func TestJPEGProcessor_Compress_MaxFileSize(t *testing.T) {
+	p := NewJPEGProcessor()
+	input := createTestJPEG(t, 100, 100, 95)
+
+	t.Run("Within limit", func(t *testing.T) {
+		reader := bytes.NewReader(input)
+		var output bytes.Buffer
+		opts := CompressOptions{
+			MaxFileSize: int64(len(input) + 1),
+		}
+		result, err := p.Compress(context.Background(), reader, &output, opts)
+		if err != nil {
+			t.Fatalf("Compress() error = %v", err)
+		}
+		if result.OriginalSize != int64(len(input)) {
+			t.Errorf("OriginalSize = %d, want %d", result.OriginalSize, len(input))
+		}
+	})
+
+	t.Run("Exceeds limit", func(t *testing.T) {
+		reader := bytes.NewReader(input)
+		var output bytes.Buffer
+		opts := CompressOptions{
+			MaxFileSize: 1, // Very small limit
+		}
+		_, err := p.Compress(context.Background(), reader, &output, opts)
+		if err == nil {
+			t.Fatal("Compress() should return error when file exceeds MaxFileSize")
+		}
+	})
+}
+
+func TestJPEGProcessor_Compress_PreserveMetadata(t *testing.T) {
+	p := NewJPEGProcessor()
+	input := createTestJPEG(t, 50, 50, 95)
+	reader := bytes.NewReader(input)
+	var output bytes.Buffer
+
+	opts := CompressOptions{
+		Quality:          80,
+		PreserveMetadata: true,
+	}
+	_, err := p.Compress(context.Background(), reader, &output, opts)
+	if err == nil {
+		t.Error("Compress() should return error when PreserveMetadata is true")
+	}
+	if err != ErrPreserveMetadataNotSupported {
+		t.Errorf("Compress() error = %v, want %v", err, ErrPreserveMetadataNotSupported)
+	}
+}
+
+func TestJPEGProcessor_Convert_MaxFileSize(t *testing.T) {
+	p := NewJPEGProcessor()
+	input := createTestPNG(t, 50, 50)
+
+	t.Run("Exceeds limit", func(t *testing.T) {
+		reader := bytes.NewReader(input)
+		var output bytes.Buffer
+		opts := ConvertOptions{
+			Format: FormatJPEG,
+			CompressOptions: CompressOptions{
+				MaxFileSize: 1,
+			},
+		}
+		_, err := p.Convert(context.Background(), reader, &output, opts)
+		if err == nil {
+			t.Fatal("Convert() should return error when file exceeds MaxFileSize")
+		}
+	})
+}
+
+func TestJPEGProcessor_Convert_PreserveMetadata(t *testing.T) {
+	p := NewJPEGProcessor()
+	input := createTestPNG(t, 50, 50)
+	reader := bytes.NewReader(input)
+	var output bytes.Buffer
+
+	opts := ConvertOptions{
+		Format: FormatJPEG,
+		CompressOptions: CompressOptions{
+			Quality:          80,
+			PreserveMetadata: true,
+		},
+	}
+	_, err := p.Convert(context.Background(), reader, &output, opts)
+	if err == nil {
+		t.Error("Convert() should return error when PreserveMetadata is true")
+	}
+	if err != ErrPreserveMetadataNotSupported {
+		t.Errorf("Convert() error = %v, want %v", err, ErrPreserveMetadataNotSupported)
+	}
+}
+
 func TestJPEGProcessor_Convert_FormatMismatch(t *testing.T) {
 	p := NewJPEGProcessor()
 	input := createTestPNG(t, 100, 100)
