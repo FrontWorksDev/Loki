@@ -142,7 +142,7 @@ func (bp *DefaultBatchProcessor) processItem(ctx context.Context, item BatchItem
 	if err != nil {
 		return BatchResult{Item: item, Error: fmt.Errorf("failed to open input file: %w", err)}
 	}
-	defer inFile.Close()
+	defer func() { _ = inFile.Close() }()
 
 	// Ensure output directory exists.
 	outDir := filepath.Dir(item.OutputPath)
@@ -154,7 +154,7 @@ func (bp *DefaultBatchProcessor) processItem(ctx context.Context, item BatchItem
 	if err != nil {
 		return BatchResult{Item: item, Error: fmt.Errorf("failed to create output file: %w", err)}
 	}
-	defer outFile.Close()
+	defer func() { _ = outFile.Close() }()
 
 	var proc Processor
 	switch format {
@@ -168,8 +168,8 @@ func (bp *DefaultBatchProcessor) processItem(ctx context.Context, item BatchItem
 
 	result, err := proc.Compress(ctx, inFile, outFile, item.Options)
 	if err != nil {
-		outFile.Close()
-		os.Remove(item.OutputPath)
+		_ = outFile.Close()
+		_ = os.Remove(item.OutputPath)
 		return BatchResult{Item: item, Error: err}
 	}
 

@@ -42,7 +42,7 @@ func verifyImageFile(t *testing.T, path, expectedFormat string) {
 	if err != nil {
 		t.Fatalf("出力ファイルを開けません: %v", err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	_, format, err := image.Decode(f)
 	if err != nil {
