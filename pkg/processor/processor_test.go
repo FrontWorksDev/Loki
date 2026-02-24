@@ -180,9 +180,10 @@ func TestBatchResult_IsSuccess(t *testing.T) {
 
 func TestCompressOptions_Validate(t *testing.T) {
 	tests := []struct {
-		name    string
-		opts    CompressOptions
-		wantErr error
+		name       string
+		opts       CompressOptions
+		wantErr    error
+		wantAnyErr bool
 	}{
 		{
 			name:    "Default options are valid",
@@ -221,11 +222,24 @@ func TestCompressOptions_Validate(t *testing.T) {
 			},
 			wantErr: nil,
 		},
+		{
+			name: "MaxFileSize negative is invalid",
+			opts: CompressOptions{
+				MaxFileSize: -1,
+			},
+			wantAnyErr: true,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.opts.Validate()
+			if tt.wantAnyErr {
+				if err == nil {
+					t.Error("Validate() should return error")
+				}
+				return
+			}
 			if !errors.Is(err, tt.wantErr) {
 				t.Errorf("Validate() error = %v, want %v", err, tt.wantErr)
 			}
