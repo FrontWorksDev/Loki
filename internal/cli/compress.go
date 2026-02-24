@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/FrontWorksDev/Loki/internal/cli/tui"
 	"github.com/FrontWorksDev/Loki/pkg/processor"
@@ -178,9 +179,12 @@ func compressDirectoryWithText(cmd *cobra.Command, items []processor.BatchItem) 
 
 	fmt.Fprintf(out, "%d 個の画像ファイルを処理します...\n", len(items))
 
+	var mu sync.Mutex
 	bp := processor.NewDefaultBatchProcessor(
 		processor.WithProgressCallback(func(p processor.Progress) {
+			mu.Lock()
 			fmt.Fprintf(out, "  [%d/%d] %s\n", p.Completed+p.Failed, p.Total, p.Current)
+			mu.Unlock()
 		}),
 	)
 
