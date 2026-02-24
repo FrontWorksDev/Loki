@@ -207,6 +207,20 @@ func TestCompressOptions_Validate(t *testing.T) {
 			},
 			wantErr: ErrPreserveMetadataNotSupported,
 		},
+		{
+			name: "MaxFileSize zero is valid",
+			opts: CompressOptions{
+				MaxFileSize: 0,
+			},
+			wantErr: nil,
+		},
+		{
+			name: "MaxFileSize positive is valid",
+			opts: CompressOptions{
+				MaxFileSize: 1024 * 1024,
+			},
+			wantErr: nil,
+		},
 	}
 
 	for _, tt := range tests {

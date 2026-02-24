@@ -306,6 +306,38 @@ func TestJPEGProcessor_Compress_QualityBounds(t *testing.T) {
 	}
 }
 
+func TestJPEGProcessor_Compress_MaxFileSize(t *testing.T) {
+	p := NewJPEGProcessor()
+	input := createTestJPEG(t, 100, 100, 95)
+
+	t.Run("Within limit", func(t *testing.T) {
+		reader := bytes.NewReader(input)
+		var output bytes.Buffer
+		opts := CompressOptions{
+			MaxFileSize: int64(len(input) + 1),
+		}
+		result, err := p.Compress(context.Background(), reader, &output, opts)
+		if err != nil {
+			t.Fatalf("Compress() error = %v", err)
+		}
+		if result.OriginalSize != int64(len(input)) {
+			t.Errorf("OriginalSize = %d, want %d", result.OriginalSize, len(input))
+		}
+	})
+
+	t.Run("Exceeds limit", func(t *testing.T) {
+		reader := bytes.NewReader(input)
+		var output bytes.Buffer
+		opts := CompressOptions{
+			MaxFileSize: 1, // Very small limit
+		}
+		_, err := p.Compress(context.Background(), reader, &output, opts)
+		if err == nil {
+			t.Fatal("Compress() should return error when file exceeds MaxFileSize")
+		}
+	})
+}
+
 func TestJPEGProcessor_Compress_PreserveMetadata(t *testing.T) {
 	p := NewJPEGProcessor()
 	input := createTestJPEG(t, 50, 50, 95)

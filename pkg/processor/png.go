@@ -31,7 +31,7 @@ func (p *PNGProcessor) Compress(ctx context.Context, r io.Reader, w io.Writer, o
 	}
 
 	// Read all input data to calculate original size
-	inputData, err := io.ReadAll(r)
+	inputData, err := readAllWithLimit(r, opts.MaxFileSize)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read input: %w", err)
 	}
@@ -91,7 +91,7 @@ func (p *PNGProcessor) Convert(ctx context.Context, r io.Reader, w io.Writer, op
 	}
 
 	// Read all input data to calculate original size
-	inputData, err := io.ReadAll(r)
+	inputData, err := readAllWithLimit(r, opts.MaxFileSize)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read input: %w", err)
 	}
