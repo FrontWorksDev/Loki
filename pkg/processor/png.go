@@ -26,10 +26,8 @@ func (p *PNGProcessor) Compress(ctx context.Context, r io.Reader, w io.Writer, o
 		return nil, err
 	}
 
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	default:
+	if err := checkContext(ctx); err != nil {
+		return nil, err
 	}
 
 	// Read all input data to calculate original size
@@ -39,10 +37,18 @@ func (p *PNGProcessor) Compress(ctx context.Context, r io.Reader, w io.Writer, o
 	}
 	originalSize := int64(len(inputData))
 
+	if err := checkContext(ctx); err != nil {
+		return nil, err
+	}
+
 	// Decode the image
 	img, _, err := image.Decode(bytes.NewReader(inputData))
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode image: %w", err)
+	}
+
+	if err := checkContext(ctx); err != nil {
+		return nil, err
 	}
 
 	// Create encoder with compression level
@@ -80,10 +86,8 @@ func (p *PNGProcessor) Convert(ctx context.Context, r io.Reader, w io.Writer, op
 		return nil, err
 	}
 
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	default:
+	if err := checkContext(ctx); err != nil {
+		return nil, err
 	}
 
 	// Read all input data to calculate original size
@@ -93,10 +97,18 @@ func (p *PNGProcessor) Convert(ctx context.Context, r io.Reader, w io.Writer, op
 	}
 	originalSize := int64(len(inputData))
 
+	if err := checkContext(ctx); err != nil {
+		return nil, err
+	}
+
 	// Decode the image (supports multiple formats via registered decoders)
 	img, _, err := image.Decode(bytes.NewReader(inputData))
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode image: %w", err)
+	}
+
+	if err := checkContext(ctx); err != nil {
+		return nil, err
 	}
 
 	// Create encoder with compression level
