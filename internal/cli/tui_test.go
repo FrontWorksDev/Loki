@@ -40,11 +40,14 @@ func TestModelUpdateQuit(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			m := NewModel()
-			keyMsg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(tt.key)}
-			if tt.key == "ctrl+c" {
+			var keyMsg tea.KeyMsg
+			switch tt.key {
+			case "ctrl+c":
 				keyMsg = tea.KeyMsg{Type: tea.KeyCtrlC}
-			} else if tt.key == "esc" {
+			case "esc":
 				keyMsg = tea.KeyMsg{Type: tea.KeyEsc}
+			default:
+				keyMsg = tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(tt.key)}
 			}
 
 			updatedModel, cmd := m.Update(keyMsg)

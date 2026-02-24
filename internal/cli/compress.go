@@ -108,7 +108,7 @@ func compressSingleFile(cmd *cobra.Command, inputPath string, opts processor.Com
 	if err != nil {
 		return fmt.Errorf("入力ファイルを開けません: %w", err)
 	}
-	defer inFile.Close()
+	defer func() { _ = inFile.Close() }()
 
 	outFile, err := os.Create(outputPath)
 	if err != nil {
@@ -125,21 +125,21 @@ func compressSingleFile(cmd *cobra.Command, inputPath string, opts processor.Com
 
 	result, err := proc.Compress(cmd.Context(), inFile, outFile, opts)
 	if err != nil {
-		outFile.Close()
-		os.Remove(outputPath)
+		_ = outFile.Close()
+		_ = os.Remove(outputPath)
 		return fmt.Errorf("圧縮に失敗しました: %w", err)
 	}
 
 	if err := outFile.Close(); err != nil {
-		os.Remove(outputPath)
+		_ = os.Remove(outputPath)
 		return fmt.Errorf("出力ファイルの書き込みに失敗しました: %w", err)
 	}
 
 	out := cmd.OutOrStdout()
-	fmt.Fprintf(out, "圧縮完了: %s → %s\n", inputPath, outputPath)
-	fmt.Fprintf(out, "  元サイズ: %d bytes\n", result.OriginalSize)
-	fmt.Fprintf(out, "  圧縮後: %d bytes\n", result.CompressedSize)
-	fmt.Fprintf(out, "  削減率: %.1f%%\n", result.SavedPercentage())
+	_, _ = fmt.Fprintf(out, "圧縮完了: %s → %s\n", inputPath, outputPath)
+	_, _ = fmt.Fprintf(out, "  元サイズ: %d bytes\n", result.OriginalSize)
+	_, _ = fmt.Fprintf(out, "  圧縮後: %d bytes\n", result.CompressedSize)
+	_, _ = fmt.Fprintf(out, "  削減率: %.1f%%\n", result.SavedPercentage())
 
 	return nil
 }
@@ -163,7 +163,7 @@ func compressDirectory(cmd *cobra.Command, inputDir string, opts processor.Compr
 	out := cmd.OutOrStdout()
 
 	if len(items) == 0 {
-		fmt.Fprintln(out, "対象の画像ファイルが見つかりませんでした")
+		_, _ = fmt.Fprintln(out, "対象の画像ファイルが見つかりませんでした")
 		return nil
 	}
 
@@ -177,13 +177,13 @@ func compressDirectoryWithText(cmd *cobra.Command, items []processor.BatchItem) 
 	out := cmd.OutOrStdout()
 	errOut := cmd.ErrOrStderr()
 
-	fmt.Fprintf(out, "%d 個の画像ファイルを処理します...\n", len(items))
+	_, _ = fmt.Fprintf(out, "%d 個の画像ファイルを処理します...\n", len(items))
 
 	var mu sync.Mutex
 	bp := processor.NewDefaultBatchProcessor(
 		processor.WithProgressCallback(func(p processor.Progress) {
 			mu.Lock()
-			fmt.Fprintf(out, "  [%d/%d] %s\n", p.Completed+p.Failed, p.Total, p.Current)
+			_, _ = fmt.Fprintf(out, "  [%d/%d] %s\n", p.Completed+p.Failed, p.Total, p.Current)
 			mu.Unlock()
 		}),
 	)
@@ -200,11 +200,11 @@ func compressDirectoryWithText(cmd *cobra.Command, items []processor.BatchItem) 
 			successCount++
 		} else {
 			failCount++
-			fmt.Fprintf(errOut, "  エラー: %s: %v\n", res.Item.InputPath, res.Error)
+			_, _ = fmt.Fprintf(errOut, "  エラー: %s: %v\n", res.Item.InputPath, res.Error)
 		}
 	}
 
-	fmt.Fprintf(out, "完了: 成功 %d, 失敗 %d\n", successCount, failCount)
+	_, _ = fmt.Fprintf(out, "完了: 成功 %d, 失敗 %d\n", successCount, failCount)
 
 	if failCount > 0 {
 		return fmt.Errorf("%d 件の画像の圧縮に失敗しました", failCount)

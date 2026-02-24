@@ -82,12 +82,8 @@ func TestInitConfig_設定ファイル読み込み(t *testing.T) {
 func TestInitConfig_設定ファイルなし(t *testing.T) {
 	resetFlagsAndViper(t)
 
-	origHome := os.Getenv("HOME")
 	tmpDir := t.TempDir()
-	os.Setenv("HOME", tmpDir)
-	t.Cleanup(func() {
-		os.Setenv("HOME", origHome)
-	})
+	t.Setenv("HOME", tmpDir)
 
 	initConfig()
 
