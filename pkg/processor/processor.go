@@ -2,7 +2,15 @@ package processor
 
 import (
 	"context"
+	"errors"
 	"io"
+)
+
+// Errors returned by processor operations.
+var (
+	// ErrPreserveMetadataNotSupported is returned when PreserveMetadata is set to true.
+	// Metadata preservation is not yet implemented.
+	ErrPreserveMetadataNotSupported = errors.New("preserve metadata is not yet supported")
 )
 
 // Processor defines the interface for image processing operations.
@@ -30,8 +38,16 @@ type CompressOptions struct {
 	Level CompressionLevel
 
 	// PreserveMetadata indicates whether to preserve image metadata.
-	// TODO: Not yet implemented. Reserved for future use.
+	// Not yet implemented. Setting this to true will cause Validate() to return an error.
 	PreserveMetadata bool
+}
+
+// Validate validates the CompressOptions and returns an error if any option is unsupported.
+func (o CompressOptions) Validate() error {
+	if o.PreserveMetadata {
+		return ErrPreserveMetadataNotSupported
+	}
+	return nil
 }
 
 // DefaultCompressOptions returns the default compression options.

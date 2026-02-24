@@ -22,6 +22,10 @@ func NewPNGProcessor() *PNGProcessor {
 
 // Compress compresses a PNG image.
 func (p *PNGProcessor) Compress(ctx context.Context, r io.Reader, w io.Writer, opts CompressOptions) (*Result, error) {
+	if err := opts.Validate(); err != nil {
+		return nil, err
+	}
+
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -70,6 +74,10 @@ func (p *PNGProcessor) Convert(ctx context.Context, r io.Reader, w io.Writer, op
 	// Validate target format
 	if opts.Format != FormatPNG {
 		return nil, fmt.Errorf("PNGProcessor only supports conversion to PNG, got %s", opts.Format)
+	}
+
+	if err := opts.Validate(); err != nil {
+		return nil, err
 	}
 
 	select {

@@ -22,6 +22,10 @@ func NewJPEGProcessor() *JPEGProcessor {
 
 // Compress compresses a JPEG image.
 func (p *JPEGProcessor) Compress(ctx context.Context, r io.Reader, w io.Writer, opts CompressOptions) (*Result, error) {
+	if err := opts.Validate(); err != nil {
+		return nil, err
+	}
+
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
@@ -80,6 +84,10 @@ func (p *JPEGProcessor) Convert(ctx context.Context, r io.Reader, w io.Writer, o
 	// Validate target format
 	if opts.Format != FormatJPEG {
 		return nil, fmt.Errorf("JPEGProcessor only supports conversion to JPEG, got %s", opts.Format)
+	}
+
+	if err := opts.Validate(); err != nil {
+		return nil, err
 	}
 
 	select {

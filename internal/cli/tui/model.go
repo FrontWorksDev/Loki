@@ -129,24 +129,24 @@ func (m Model) View() string {
 		processed := m.completed + m.failed
 		b.WriteString("\n")
 		b.WriteString("  " + m.progress.View() + "\n\n")
-		b.WriteString(fmt.Sprintf("  [%d/%d] %s\n\n", processed, m.totalFiles, m.currentFile))
+		fmt.Fprintf(&b, "  [%d/%d] %s\n\n", processed, m.totalFiles, m.currentFile)
 
 	case StateCompleted:
 		successCount := m.completed
 		failCount := m.failed
 		b.WriteString("\n")
 		b.WriteString("  " + m.progress.View() + "\n\n")
-		b.WriteString(fmt.Sprintf("  完了: 成功 %d, 失敗 %d\n", successCount, failCount))
+		fmt.Fprintf(&b, "  完了: 成功 %d, 失敗 %d\n", successCount, failCount)
 		if len(m.results) > 0 {
 			b.WriteString("\n  失敗ファイル:\n")
 			for _, r := range m.results {
-				b.WriteString(fmt.Sprintf("    - %s: %s\n", r.InputPath, r.Error))
+				fmt.Fprintf(&b, "    - %s: %s\n", r.InputPath, r.Error)
 			}
 		}
 		b.WriteString("\n  qキーで終了\n\n")
 
 	case StateError:
-		b.WriteString(fmt.Sprintf("\n  エラー: %v\n\n  qキーで終了\n\n", m.err))
+		fmt.Fprintf(&b, "\n  エラー: %v\n\n  qキーで終了\n\n", m.err)
 	}
 
 	return b.String()

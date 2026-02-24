@@ -178,6 +178,47 @@ func TestBatchResult_IsSuccess(t *testing.T) {
 	}
 }
 
+func TestCompressOptions_Validate(t *testing.T) {
+	tests := []struct {
+		name    string
+		opts    CompressOptions
+		wantErr error
+	}{
+		{
+			name:    "Default options are valid",
+			opts:    DefaultCompressOptions(),
+			wantErr: nil,
+		},
+		{
+			name: "PreserveMetadata false is valid",
+			opts: CompressOptions{
+				Quality:          80,
+				Level:            CompressionMedium,
+				PreserveMetadata: false,
+			},
+			wantErr: nil,
+		},
+		{
+			name: "PreserveMetadata true returns error",
+			opts: CompressOptions{
+				Quality:          80,
+				Level:            CompressionMedium,
+				PreserveMetadata: true,
+			},
+			wantErr: ErrPreserveMetadataNotSupported,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.opts.Validate()
+			if !errors.Is(err, tt.wantErr) {
+				t.Errorf("Validate() error = %v, want %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
 func TestCompressOptions_Customization(t *testing.T) {
 	opts := CompressOptions{
 		Quality:          85,

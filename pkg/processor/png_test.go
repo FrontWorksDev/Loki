@@ -248,6 +248,47 @@ func TestPNGProcessor_Compress_CompressionLevels(t *testing.T) {
 	t.Logf("Compression sizes: Low=%d, Medium=%d, High=%d", sizes[0], sizes[1], sizes[2])
 }
 
+func TestPNGProcessor_Compress_PreserveMetadata(t *testing.T) {
+	p := NewPNGProcessor()
+	input := createTestPNG(t, 50, 50)
+	reader := bytes.NewReader(input)
+	var output bytes.Buffer
+
+	opts := CompressOptions{
+		Level:            CompressionMedium,
+		PreserveMetadata: true,
+	}
+	_, err := p.Compress(context.Background(), reader, &output, opts)
+	if err == nil {
+		t.Error("Compress() should return error when PreserveMetadata is true")
+	}
+	if err != ErrPreserveMetadataNotSupported {
+		t.Errorf("Compress() error = %v, want %v", err, ErrPreserveMetadataNotSupported)
+	}
+}
+
+func TestPNGProcessor_Convert_PreserveMetadata(t *testing.T) {
+	p := NewPNGProcessor()
+	input := createTestJPEG(t, 50, 50, 95)
+	reader := bytes.NewReader(input)
+	var output bytes.Buffer
+
+	opts := ConvertOptions{
+		Format: FormatPNG,
+		CompressOptions: CompressOptions{
+			Level:            CompressionMedium,
+			PreserveMetadata: true,
+		},
+	}
+	_, err := p.Convert(context.Background(), reader, &output, opts)
+	if err == nil {
+		t.Error("Convert() should return error when PreserveMetadata is true")
+	}
+	if err != ErrPreserveMetadataNotSupported {
+		t.Errorf("Convert() error = %v, want %v", err, ErrPreserveMetadataNotSupported)
+	}
+}
+
 func TestPNGProcessor_Convert_FormatMismatch(t *testing.T) {
 	p := NewPNGProcessor()
 	input := createTestJPEG(t, 100, 100, 95)
