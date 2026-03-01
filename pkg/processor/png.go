@@ -10,6 +10,9 @@ import (
 
 	// Register JPEG decoder for Convert function
 	_ "image/jpeg"
+
+	// Register WebP decoder for Convert function
+	_ "github.com/chai2010/webp"
 )
 
 // PNGProcessor implements the Processor interface for PNG images.

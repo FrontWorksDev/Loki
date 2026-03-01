@@ -30,6 +30,7 @@ type BatchProcessorOption func(*DefaultBatchProcessor)
 type DefaultBatchProcessor struct {
 	jpegProc         Processor
 	pngProc          Processor
+	webpProc         Processor
 	maxWorkers       int
 	progressCallback func(Progress)
 }
@@ -39,6 +40,7 @@ func NewDefaultBatchProcessor(opts ...BatchProcessorOption) *DefaultBatchProcess
 	bp := &DefaultBatchProcessor{
 		jpegProc:   NewJPEGProcessor(),
 		pngProc:    NewPNGProcessor(),
+		webpProc:   NewWEBPProcessor(),
 		maxWorkers: runtime.NumCPU(),
 	}
 	for _, opt := range opts {
@@ -162,6 +164,8 @@ func (bp *DefaultBatchProcessor) processItem(ctx context.Context, item BatchItem
 		proc = bp.jpegProc
 	case FormatPNG:
 		proc = bp.pngProc
+	case FormatWEBP:
+		proc = bp.webpProc
 	default:
 		return BatchResult{Item: item, Error: fmt.Errorf("unsupported format: %s", format)}
 	}
@@ -184,6 +188,8 @@ func detectFormatFromPath(path string) (ImageFormat, error) {
 		return FormatJPEG, nil
 	case ".png":
 		return FormatPNG, nil
+	case ".webp":
+		return FormatWEBP, nil
 	default:
 		return -1, fmt.Errorf("unsupported image format: %s", ext)
 	}

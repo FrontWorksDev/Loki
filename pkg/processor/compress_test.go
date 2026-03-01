@@ -7,6 +7,8 @@ import (
 	"image/jpeg"
 	"image/png"
 	"testing"
+
+	"github.com/chai2010/webp"
 )
 
 // errReader is an io.Reader that always returns an error.
@@ -338,6 +340,45 @@ func TestCompress_AllFormats(t *testing.T) {
 				_, err := png.Decode(bytes.NewReader(data))
 				if err != nil {
 					t.Errorf("output is not valid PNG: %v", err)
+				}
+			},
+		},
+		{
+			name:      "WebP/Low",
+			format:    "webp",
+			processor: NewWEBPProcessor(),
+			input:     func(t *testing.T) []byte { return createTestWEBP(t, 100, 100, 95) },
+			level:     CompressionLow,
+			validate: func(t *testing.T, data []byte) {
+				_, err := webp.Decode(bytes.NewReader(data))
+				if err != nil {
+					t.Errorf("output is not valid WebP: %v", err)
+				}
+			},
+		},
+		{
+			name:      "WebP/Medium",
+			format:    "webp",
+			processor: NewWEBPProcessor(),
+			input:     func(t *testing.T) []byte { return createTestWEBP(t, 100, 100, 95) },
+			level:     CompressionMedium,
+			validate: func(t *testing.T, data []byte) {
+				_, err := webp.Decode(bytes.NewReader(data))
+				if err != nil {
+					t.Errorf("output is not valid WebP: %v", err)
+				}
+			},
+		},
+		{
+			name:      "WebP/High",
+			format:    "webp",
+			processor: NewWEBPProcessor(),
+			input:     func(t *testing.T) []byte { return createTestWEBP(t, 100, 100, 95) },
+			level:     CompressionHigh,
+			validate: func(t *testing.T, data []byte) {
+				_, err := webp.Decode(bytes.NewReader(data))
+				if err != nil {
+					t.Errorf("output is not valid WebP: %v", err)
 				}
 			},
 		},

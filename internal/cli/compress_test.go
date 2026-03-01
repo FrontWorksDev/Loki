@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/FrontWorksDev/Loki/pkg/processor"
+	"github.com/chai2010/webp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -56,6 +57,27 @@ func createTestPNG(t *testing.T, width, height int) []byte {
 	var buf bytes.Buffer
 	if err := png.Encode(&buf, img); err != nil {
 		t.Fatalf("failed to create test PNG: %v", err)
+	}
+	return buf.Bytes()
+}
+
+// createTestWEBP creates a test WebP image with the specified dimensions.
+func createTestWEBP(t *testing.T, width, height int, quality float32) []byte {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, width, height))
+	for y := range height {
+		for x := range width {
+			img.Set(x, y, color.RGBA{
+				R: uint8(x * 255 / max(width, 1)),
+				G: uint8(y * 255 / max(height, 1)),
+				B: 128,
+				A: 255,
+			})
+		}
+	}
+	var buf bytes.Buffer
+	if err := webp.Encode(&buf, img, &webp.Options{Quality: quality}); err != nil {
+		t.Fatalf("failed to create test WebP: %v", err)
 	}
 	return buf.Bytes()
 }
@@ -139,6 +161,8 @@ func TestDetectFormat(t *testing.T) {
 		{name: ".JPG大文字", path: "PHOTO.JPG", want: processor.FormatJPEG},
 		{name: ".JPEG大文字", path: "PHOTO.JPEG", want: processor.FormatJPEG},
 		{name: ".PNG大文字", path: "ICON.PNG", want: processor.FormatPNG},
+		{name: ".webp拡張子", path: "image.webp", want: processor.FormatWEBP},
+		{name: ".WEBP大文字", path: "IMAGE.WEBP", want: processor.FormatWEBP},
 		{name: "パス付き", path: "/path/to/photo.jpg", want: processor.FormatJPEG},
 		{name: "非対応_bmp", path: "file.bmp", wantErr: true},
 		{name: "非対応_gif", path: "file.gif", wantErr: true},
@@ -216,6 +240,30 @@ func TestCompressSingleFile_PNG(t *testing.T) {
 	}
 
 	outputPath := filepath.Join(tmpDir, "output.png")
+	viper.Set("compress.output", outputPath)
+
+	cmd := newTestCmd()
+	err := compressSingleFile(cmd, inputPath, processor.DefaultCompressOptions())
+	if err != nil {
+		t.Fatalf("compressSingleFile() error = %v", err)
+	}
+
+	if _, err := os.Stat(outputPath); os.IsNotExist(err) {
+		t.Error("出力ファイルが作成されていません")
+	}
+}
+
+func TestCompressSingleFile_WEBP(t *testing.T) {
+	resetGlobals(t)
+
+	tmpDir := t.TempDir()
+	inputPath := filepath.Join(tmpDir, "test.webp")
+	webpData := createTestWEBP(t, 100, 100, 95)
+	if err := os.WriteFile(inputPath, webpData, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	outputPath := filepath.Join(tmpDir, "output.webp")
 	viper.Set("compress.output", outputPath)
 
 	cmd := newTestCmd()

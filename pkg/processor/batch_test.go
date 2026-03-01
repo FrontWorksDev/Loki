@@ -62,6 +62,9 @@ func TestNewDefaultBatchProcessor(t *testing.T) {
 			if bp.pngProc == nil {
 				t.Error("pngProc is nil")
 			}
+			if bp.webpProc == nil {
+				t.Error("webpProc is nil")
+			}
 			if bp.maxWorkers != tt.wantMaxWorkers {
 				t.Errorf("maxWorkers = %d, want %d", bp.maxWorkers, tt.wantMaxWorkers)
 			}
@@ -468,7 +471,8 @@ func TestDetectFormatFromPath(t *testing.T) {
 		{name: "パス付き", path: "/path/to/photo.jpg", wantFormat: FormatJPEG},
 		{name: "未対応拡張子_bmp", path: "file.bmp", wantErr: true},
 		{name: "未対応拡張子_gif", path: "file.gif", wantErr: true},
-		{name: "未対応拡張子_webp", path: "file.webp", wantErr: true},
+		{name: ".webp拡張子", path: "file.webp", wantFormat: FormatWEBP},
+		{name: ".WEBP大文字", path: "FILE.WEBP", wantFormat: FormatWEBP},
 		{name: "拡張子なし", path: "noext", wantErr: true},
 		{name: "空文字", path: "", wantErr: true},
 	}
@@ -506,9 +510,11 @@ func TestScanDirectory_混合ファイル(t *testing.T) {
 
 	jpegData := createTestJPEG(t, 10, 10, 80)
 	pngData := createTestPNG(t, 10, 10)
+	webpData := createTestWEBP(t, 10, 10, 80)
 
 	writeTestFile(t, inputDir, "photo.jpg", jpegData)
 	writeTestFile(t, inputDir, "icon.png", pngData)
+	writeTestFile(t, inputDir, "image.webp", webpData)
 	writeTestFile(t, inputDir, "readme.txt", []byte("hello"))
 	writeTestFile(t, inputDir, "data.csv", []byte("a,b,c"))
 
@@ -516,14 +522,14 @@ func TestScanDirectory_混合ファイル(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ScanDirectory() error = %v", err)
 	}
-	if len(items) != 2 {
-		t.Errorf("ScanDirectory() returned %d items, want 2", len(items))
+	if len(items) != 3 {
+		t.Errorf("ScanDirectory() returned %d items, want 3", len(items))
 	}
 
 	// Verify that only image files are included.
 	for _, item := range items {
 		ext := filepath.Ext(item.InputPath)
-		if ext != ".jpg" && ext != ".png" {
+		if ext != ".jpg" && ext != ".png" && ext != ".webp" {
 			t.Errorf("unexpected file extension: %s", ext)
 		}
 	}
@@ -625,10 +631,12 @@ func TestDefaultBatchProcessor_統合テスト(t *testing.T) {
 
 	jpegData := createTestJPEG(t, 100, 100, 95)
 	pngData := createTestPNG(t, 100, 100)
+	webpData := createTestWEBP(t, 100, 100, 95)
 
 	writeTestFile(t, inputDir, "photo1.jpg", jpegData)
 	writeTestFile(t, inputDir, "photo2.jpeg", jpegData)
 	writeTestFile(t, inputDir, "icon.png", pngData)
+	writeTestFile(t, inputDir, "image.webp", webpData)
 	writeTestFile(t, inputDir, "sub/nested.jpg", jpegData)
 	writeTestFile(t, inputDir, "readme.txt", []byte("not an image"))
 
@@ -637,8 +645,8 @@ func TestDefaultBatchProcessor_統合テスト(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ScanDirectory() error = %v", err)
 	}
-	if len(items) != 4 {
-		t.Fatalf("ScanDirectory() returned %d items, want 4", len(items))
+	if len(items) != 5 {
+		t.Fatalf("ScanDirectory() returned %d items, want 5", len(items))
 	}
 
 	// Process batch.
@@ -647,8 +655,8 @@ func TestDefaultBatchProcessor_統合テスト(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ProcessBatch() error = %v", err)
 	}
-	if len(results) != 4 {
-		t.Fatalf("ProcessBatch() returned %d results, want 4", len(results))
+	if len(results) != 5 {
+		t.Fatalf("ProcessBatch() returned %d results, want 5", len(results))
 	}
 
 	// Verify all succeeded.

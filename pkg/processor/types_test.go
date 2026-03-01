@@ -13,6 +13,7 @@ func TestImageFormat_String(t *testing.T) {
 	}{
 		{"JPEG format", FormatJPEG, "jpeg"},
 		{"PNG format", FormatPNG, "png"},
+		{"WEBP format", FormatWEBP, "webp"},
 		{"Unknown format", ImageFormat(99), "unknown"},
 	}
 
@@ -33,6 +34,7 @@ func TestImageFormat_IsValid(t *testing.T) {
 	}{
 		{"JPEG is valid", FormatJPEG, true},
 		{"PNG is valid", FormatPNG, true},
+		{"WEBP is valid", FormatWEBP, true},
 		{"Unknown is invalid", ImageFormat(99), false},
 		{"Negative is invalid", ImageFormat(-1), false},
 	}
@@ -54,6 +56,7 @@ func TestImageFormat_Extension(t *testing.T) {
 	}{
 		{"JPEG extension", FormatJPEG, ".jpg"},
 		{"PNG extension", FormatPNG, ".png"},
+		{"WEBP extension", FormatWEBP, ".webp"},
 		{"Unknown extension", ImageFormat(99), ""},
 	}
 
@@ -74,6 +77,7 @@ func TestImageFormat_MIMEType(t *testing.T) {
 	}{
 		{"JPEG MIME type", FormatJPEG, "image/jpeg"},
 		{"PNG MIME type", FormatPNG, "image/png"},
+		{"WEBP MIME type", FormatWEBP, "image/webp"},
 		{"Unknown MIME type", ImageFormat(99), ""},
 	}
 
@@ -145,6 +149,27 @@ func TestCompressionLevel_ToPNGCompressionLevel(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.level.ToPNGCompressionLevel(); got != tt.expected {
 				t.Errorf("CompressionLevel.ToPNGCompressionLevel() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestCompressionLevel_ToWebPQuality(t *testing.T) {
+	tests := []struct {
+		name     string
+		level    CompressionLevel
+		expected float32
+	}{
+		{"Low quality", CompressionLow, 60},
+		{"Medium quality", CompressionMedium, 75},
+		{"High quality", CompressionHigh, 90},
+		{"Unknown defaults to medium", CompressionLevel(99), 75},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.level.ToWebPQuality(); got != tt.expected {
+				t.Errorf("CompressionLevel.ToWebPQuality() = %v, want %v", got, tt.expected)
 			}
 		})
 	}
