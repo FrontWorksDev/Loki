@@ -156,3 +156,32 @@ type BatchResult struct {
 func (br *BatchResult) IsSuccess() bool {
 	return br.Error == nil && br.Result != nil
 }
+
+// BatchConvertItem represents a single item in batch format conversion.
+type BatchConvertItem struct {
+	// InputPath is the path to the input image file.
+	InputPath string
+
+	// OutputPath is the path to the output image file.
+	OutputPath string
+
+	// Options contains the conversion options for this item.
+	Options ConvertOptions
+}
+
+// BatchConvertResult represents the result of processing a single batch convert item.
+type BatchConvertResult struct {
+	// Item is the original batch convert item.
+	Item BatchConvertItem
+
+	// Result contains the processing result, nil if error occurred.
+	Result *Result
+
+	// Error contains any error that occurred during processing.
+	Error error
+}
+
+// IsSuccess returns true if the batch convert item was processed successfully.
+func (br *BatchConvertResult) IsSuccess() bool {
+	return br.Error == nil && br.Result != nil
+}

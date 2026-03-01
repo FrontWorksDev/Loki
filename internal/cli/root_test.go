@@ -25,14 +25,17 @@ func TestExecute_バージョン表示(t *testing.T) {
 }
 
 func TestRootCmd_サブコマンド存在確認(t *testing.T) {
-	found := false
-	for _, cmd := range rootCmd.Commands() {
-		if cmd.Name() == "compress" {
-			found = true
-			break
+	expected := []string{"compress", "convert"}
+	for _, name := range expected {
+		found := false
+		for _, cmd := range rootCmd.Commands() {
+			if cmd.Name() == name {
+				found = true
+				break
+			}
 		}
-	}
-	if !found {
-		t.Error("compressサブコマンドが登録されていません")
+		if !found {
+			t.Errorf("%sサブコマンドが登録されていません", name)
+		}
 	}
 }

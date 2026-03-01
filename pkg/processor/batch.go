@@ -195,6 +195,200 @@ func detectFormatFromPath(path string) (ImageFormat, error) {
 	}
 }
 
+// ProcessBatchConvert processes multiple images in batch format conversion with parallel workers.
+func (bp *DefaultBatchProcessor) ProcessBatchConvert(ctx context.Context, items []BatchConvertItem) ([]BatchConvertResult, error) {
+	if len(items) == 0 {
+		return []BatchConvertResult{}, nil
+	}
+
+	results := make([]BatchConvertResult, len(items))
+	itemCh := make(chan int, len(items))
+
+	var mu sync.Mutex
+	progress := Progress{Total: len(items)}
+
+	// Send item indices to the channel.
+	for i := range items {
+		itemCh <- i
+	}
+	close(itemCh)
+
+	// Determine worker count.
+	workers := min(bp.maxWorkers, len(items))
+
+	var wg sync.WaitGroup
+	for range workers {
+		wg.Go(func() {
+			for idx := range itemCh {
+				var result BatchConvertResult
+
+				select {
+				case <-ctx.Done():
+					result = BatchConvertResult{
+						Item:  items[idx],
+						Error: ctx.Err(),
+					}
+				default:
+					result = bp.processConvertItem(ctx, items[idx])
+				}
+
+				results[idx] = result
+
+				mu.Lock()
+				if result.Error != nil {
+					progress.Failed++
+				} else {
+					progress.Completed++
+				}
+				p := Progress{
+					Total:     progress.Total,
+					Completed: progress.Completed,
+					Failed:    progress.Failed,
+					Current:   items[idx].InputPath,
+				}
+				cb := bp.progressCallback
+				mu.Unlock()
+
+				if cb != nil {
+					cb(p)
+				}
+			}
+		})
+	}
+
+	wg.Wait()
+
+	return results, nil
+}
+
+// processConvertItem processes a single batch convert item.
+func (bp *DefaultBatchProcessor) processConvertItem(ctx context.Context, item BatchConvertItem) BatchConvertResult {
+	inFile, err := os.Open(item.InputPath)
+	if err != nil {
+		return BatchConvertResult{Item: item, Error: fmt.Errorf("failed to open input file: %w", err)}
+	}
+	defer func() { _ = inFile.Close() }()
+
+	// Ensure output directory exists.
+	outDir := filepath.Dir(item.OutputPath)
+	if err := os.MkdirAll(outDir, 0o755); err != nil {
+		return BatchConvertResult{Item: item, Error: fmt.Errorf("failed to create output directory: %w", err)}
+	}
+
+	outFile, err := os.Create(item.OutputPath)
+	if err != nil {
+		return BatchConvertResult{Item: item, Error: fmt.Errorf("failed to create output file: %w", err)}
+	}
+
+	// Select processor based on output format.
+	var proc Processor
+	switch item.Options.Format {
+	case FormatJPEG:
+		proc = bp.jpegProc
+	case FormatPNG:
+		proc = bp.pngProc
+	case FormatWEBP:
+		proc = bp.webpProc
+	default:
+		_ = outFile.Close()
+		return BatchConvertResult{Item: item, Error: fmt.Errorf("unsupported output format: %s", item.Options.Format)}
+	}
+
+	result, err := proc.Convert(ctx, inFile, outFile, item.Options)
+	if err != nil {
+		_ = outFile.Close()
+		_ = os.Remove(item.OutputPath)
+		return BatchConvertResult{Item: item, Error: err}
+	}
+
+	// Explicitly close to catch buffered write/flush errors (e.g., disk full).
+	if err := outFile.Close(); err != nil {
+		_ = os.Remove(item.OutputPath)
+		return BatchConvertResult{Item: item, Error: fmt.Errorf("failed to close output file: %w", err)}
+	}
+
+	return BatchConvertResult{Item: item, Result: result}
+}
+
+// ScanDirectoryForConvertOption is a functional option for ScanDirectoryForConvert.
+type ScanDirectoryForConvertOption func(*scanConvertConfig)
+
+type scanConvertConfig struct {
+	opts ConvertOptions
+}
+
+// WithConvertOptions sets the conversion options for scanned items.
+func WithConvertOptions(opts ConvertOptions) ScanDirectoryForConvertOption {
+	return func(cfg *scanConvertConfig) {
+		cfg.opts = opts
+	}
+}
+
+// ScanDirectoryForConvert scans a directory for supported image files and returns BatchConvertItems.
+// Files that are already in the target format are skipped.
+func ScanDirectoryForConvert(inputDir, outputDir string, targetFormat ImageFormat, opts ...ScanDirectoryForConvertOption) ([]BatchConvertItem, error) {
+	cfg := &scanConvertConfig{
+		opts: DefaultConvertOptions(targetFormat),
+	}
+	for _, opt := range opts {
+		opt(cfg)
+	}
+	// Ensure the effective conversion format matches the targetFormat used for output paths.
+	// This prevents mismatches where WithConvertOptions sets a different Format.
+	cfg.opts.Format = targetFormat
+
+	info, err := os.Stat(inputDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to access input directory: %w", err)
+	}
+	if !info.IsDir() {
+		return nil, fmt.Errorf("input path is not a directory: %s", inputDir)
+	}
+
+	var items []BatchConvertItem
+	err = filepath.WalkDir(inputDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+
+		srcFormat, fmtErr := detectFormatFromPath(path)
+		if fmtErr != nil {
+			return nil // Skip unsupported files.
+		}
+
+		// Skip files that are already in the target format.
+		if srcFormat == targetFormat {
+			return nil
+		}
+
+		relPath, err := filepath.Rel(inputDir, path)
+		if err != nil {
+			return err
+		}
+
+		// Change extension to target format.
+		ext := filepath.Ext(relPath)
+		relPathNoExt := strings.TrimSuffix(relPath, ext)
+		outPath := filepath.Join(outputDir, relPathNoExt+targetFormat.Extension())
+
+		items = append(items, BatchConvertItem{
+			InputPath:  path,
+			OutputPath: outPath,
+			Options:    cfg.opts,
+		})
+
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to scan directory: %w", err)
+	}
+
+	return items, nil
+}
+
 // ScanDirectoryOption is a functional option for ScanDirectory.
 type ScanDirectoryOption func(*scanConfig)
 

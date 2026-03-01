@@ -20,6 +20,12 @@ func initConfig() {
 	viper.SetDefault("compress.output", "")
 	viper.SetDefault("compress.recursive", false)
 
+	viper.SetDefault("convert.format", "")
+	viper.SetDefault("convert.quality", 0)
+	viper.SetDefault("convert.level", "medium")
+	viper.SetDefault("convert.output", "")
+	viper.SetDefault("convert.recursive", false)
+
 	if cfgFile != "" {
 		// Use config file specified by --config flag
 		viper.SetConfigFile(cfgFile)
@@ -45,7 +51,8 @@ func initConfig() {
 		}
 	}
 
-	// Bind compress command flags to Viper
+	// Bind command flags to Viper
 	// This is done here (not in init()) so bindings survive viper.Reset() in tests
 	bindCompressFlags()
+	bindConvertFlags()
 }

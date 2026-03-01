@@ -18,6 +18,11 @@ func resetFlagsAndViper(t *testing.T) {
 			f.Changed = false
 		}
 	}
+	for _, name := range []string{"format", "quality", "level", "output", "recursive"} {
+		if f := convertCmd.Flags().Lookup(name); f != nil {
+			f.Changed = false
+		}
+	}
 	if f := rootCmd.PersistentFlags().Lookup("config"); f != nil {
 		f.Changed = false
 	}
@@ -39,6 +44,23 @@ func TestInitConfig_デフォルト値(t *testing.T) {
 	}
 	if got := viper.GetBool("compress.recursive"); got != false {
 		t.Errorf("compress.recursive = %v, want false", got)
+	}
+
+	// convert defaults
+	if got := viper.GetString("convert.format"); got != "" {
+		t.Errorf("convert.format = %q, want %q", got, "")
+	}
+	if got := viper.GetInt("convert.quality"); got != 0 {
+		t.Errorf("convert.quality = %d, want 0", got)
+	}
+	if got := viper.GetString("convert.level"); got != "medium" {
+		t.Errorf("convert.level = %q, want %q", got, "medium")
+	}
+	if got := viper.GetString("convert.output"); got != "" {
+		t.Errorf("convert.output = %q, want %q", got, "")
+	}
+	if got := viper.GetBool("convert.recursive"); got != false {
+		t.Errorf("convert.recursive = %v, want false", got)
 	}
 }
 
