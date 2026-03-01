@@ -13,6 +13,8 @@ const (
 	FormatJPEG ImageFormat = iota
 	// FormatPNG represents PNG image format.
 	FormatPNG
+	// FormatWEBP represents WebP image format.
+	FormatWEBP
 )
 
 // String returns the string representation of the ImageFormat.
@@ -22,6 +24,8 @@ func (f ImageFormat) String() string {
 		return "jpeg"
 	case FormatPNG:
 		return "png"
+	case FormatWEBP:
+		return "webp"
 	default:
 		return "unknown"
 	}
@@ -30,7 +34,7 @@ func (f ImageFormat) String() string {
 // IsValid returns true if the ImageFormat is a valid value.
 func (f ImageFormat) IsValid() bool {
 	switch f {
-	case FormatJPEG, FormatPNG:
+	case FormatJPEG, FormatPNG, FormatWEBP:
 		return true
 	default:
 		return false
@@ -44,6 +48,8 @@ func (f ImageFormat) Extension() string {
 		return ".jpg"
 	case FormatPNG:
 		return ".png"
+	case FormatWEBP:
+		return ".webp"
 	default:
 		return ""
 	}
@@ -56,6 +62,8 @@ func (f ImageFormat) MIMEType() string {
 		return "image/jpeg"
 	case FormatPNG:
 		return "image/png"
+	case FormatWEBP:
+		return "image/webp"
 	default:
 		return ""
 	}
@@ -108,6 +116,21 @@ func (c CompressionLevel) ToPNGCompressionLevel() png.CompressionLevel {
 		return png.BestCompression
 	default:
 		return png.DefaultCompression
+	}
+}
+
+// ToWebPQuality converts CompressionLevel to WebP quality value (float32).
+// Low=60, Medium=75, High=90.
+func (c CompressionLevel) ToWebPQuality() float32 {
+	switch c {
+	case CompressionLow:
+		return 60
+	case CompressionMedium:
+		return 75
+	case CompressionHigh:
+		return 90
+	default:
+		return 75
 	}
 }
 

@@ -219,6 +219,13 @@ func TestJPEGProcessor_Convert(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "Convert WebP to JPEG",
+			createInput: func(t *testing.T) []byte {
+				return createTestWEBP(t, 100, 100, 95)
+			},
+			opts: DefaultConvertOptions(FormatJPEG),
+		},
 	}
 
 	for _, tt := range tests {

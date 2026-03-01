@@ -27,7 +27,7 @@ var compressCmd = &cobra.Command{
 	Short: "画像ファイルまたはディレクトリを圧縮する",
 	Long: `画像ファイルまたはディレクトリを圧縮します。
 
-対応フォーマット: JPEG (.jpg, .jpeg), PNG (.png)
+対応フォーマット: JPEG (.jpg, .jpeg), PNG (.png), WebP (.webp)
 
 例:
   img-cli compress photo.jpg
@@ -121,6 +121,8 @@ func compressSingleFile(cmd *cobra.Command, inputPath string, opts processor.Com
 		proc = processor.NewJPEGProcessor()
 	case processor.FormatPNG:
 		proc = processor.NewPNGProcessor()
+	case processor.FormatWEBP:
+		proc = processor.NewWEBPProcessor()
 	}
 
 	result, err := proc.Compress(cmd.Context(), inFile, outFile, opts)
@@ -276,6 +278,8 @@ func detectFormat(path string) (processor.ImageFormat, error) {
 		return processor.FormatJPEG, nil
 	case ".png":
 		return processor.FormatPNG, nil
+	case ".webp":
+		return processor.FormatWEBP, nil
 	default:
 		return 0, fmt.Errorf("サポートされていない画像形式です: %s", ext)
 	}

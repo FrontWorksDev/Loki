@@ -166,6 +166,13 @@ func TestPNGProcessor_Convert(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "Convert WebP to PNG",
+			createInput: func(t *testing.T) []byte {
+				return createTestWEBP(t, 100, 100, 95)
+			},
+			opts: DefaultConvertOptions(FormatPNG),
+		},
 	}
 
 	for _, tt := range tests {

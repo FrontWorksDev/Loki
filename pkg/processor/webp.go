@@ -5,26 +5,26 @@ import (
 	"context"
 	"fmt"
 	"image"
-	"image/jpeg"
 	"io"
 
+	// Register JPEG decoder for Convert function
+	_ "image/jpeg"
 	// Register PNG decoder for Convert function
 	_ "image/png"
 
-	// Register WebP decoder for Convert function
-	_ "github.com/chai2010/webp"
+	"github.com/chai2010/webp"
 )
 
-// JPEGProcessor implements the Processor interface for JPEG images.
-type JPEGProcessor struct{}
+// WEBPProcessor implements the Processor interface for WebP images.
+type WEBPProcessor struct{}
 
-// NewJPEGProcessor creates a new JPEGProcessor.
-func NewJPEGProcessor() *JPEGProcessor {
-	return &JPEGProcessor{}
+// NewWEBPProcessor creates a new WEBPProcessor.
+func NewWEBPProcessor() *WEBPProcessor {
+	return &WEBPProcessor{}
 }
 
-// Compress compresses a JPEG image.
-func (p *JPEGProcessor) Compress(ctx context.Context, r io.Reader, w io.Writer, opts CompressOptions) (*Result, error) {
+// Compress compresses a WebP image.
+func (p *WEBPProcessor) Compress(ctx context.Context, r io.Reader, w io.Writer, opts CompressOptions) (*Result, error) {
 	if err := opts.Validate(); err != nil {
 		return nil, err
 	}
@@ -55,12 +55,10 @@ func (p *JPEGProcessor) Compress(ctx context.Context, r io.Reader, w io.Writer, 
 	}
 
 	// Determine quality
-	quality := opts.Quality
-	if quality == 0 {
-		// Use the compression level to derive JPEG quality when no explicit quality is provided.
-		quality = opts.Level.ToJPEGQuality()
+	quality := float32(opts.Quality)
+	if opts.Quality == 0 {
+		quality = opts.Level.ToWebPQuality()
 	} else {
-		// Clamp explicitly provided quality values to the valid JPEG range.
 		if quality < 1 {
 			quality = 1
 		}
@@ -71,22 +69,22 @@ func (p *JPEGProcessor) Compress(ctx context.Context, r io.Reader, w io.Writer, 
 
 	// Encode directly to output via countingWriter
 	cw := &countingWriter{w: w}
-	if err := jpeg.Encode(cw, img, &jpeg.Options{Quality: quality}); err != nil {
-		return nil, fmt.Errorf("failed to encode JPEG: %w", err)
+	if err := webp.Encode(cw, img, &webp.Options{Quality: quality}); err != nil {
+		return nil, fmt.Errorf("failed to encode WebP: %w", err)
 	}
 
 	return &Result{
 		OriginalSize:   originalSize,
 		CompressedSize: cw.n,
-		Format:         FormatJPEG,
+		Format:         FormatWEBP,
 	}, nil
 }
 
-// Convert converts an image to JPEG format.
-func (p *JPEGProcessor) Convert(ctx context.Context, r io.Reader, w io.Writer, opts ConvertOptions) (*Result, error) {
+// Convert converts an image to WebP format.
+func (p *WEBPProcessor) Convert(ctx context.Context, r io.Reader, w io.Writer, opts ConvertOptions) (*Result, error) {
 	// Validate target format
-	if opts.Format != FormatJPEG {
-		return nil, fmt.Errorf("JPEGProcessor only supports conversion to JPEG, got %s", opts.Format)
+	if opts.Format != FormatWEBP {
+		return nil, fmt.Errorf("WEBPProcessor only supports conversion to WebP, got %s", opts.Format)
 	}
 
 	if err := opts.Validate(); err != nil {
@@ -119,9 +117,9 @@ func (p *JPEGProcessor) Convert(ctx context.Context, r io.Reader, w io.Writer, o
 	}
 
 	// Determine quality
-	quality := opts.Quality
-	if quality <= 0 {
-		quality = opts.Level.ToJPEGQuality()
+	quality := float32(opts.Quality)
+	if opts.Quality <= 0 {
+		quality = opts.Level.ToWebPQuality()
 	}
 	if quality < 1 {
 		quality = 1
@@ -132,18 +130,18 @@ func (p *JPEGProcessor) Convert(ctx context.Context, r io.Reader, w io.Writer, o
 
 	// Encode directly to output via countingWriter
 	cw := &countingWriter{w: w}
-	if err := jpeg.Encode(cw, img, &jpeg.Options{Quality: quality}); err != nil {
-		return nil, fmt.Errorf("failed to encode JPEG: %w", err)
+	if err := webp.Encode(cw, img, &webp.Options{Quality: quality}); err != nil {
+		return nil, fmt.Errorf("failed to encode WebP: %w", err)
 	}
 
 	return &Result{
 		OriginalSize:   originalSize,
 		CompressedSize: cw.n,
-		Format:         FormatJPEG,
+		Format:         FormatWEBP,
 	}, nil
 }
 
 // SupportedFormats returns the formats supported by this processor.
-func (p *JPEGProcessor) SupportedFormats() []ImageFormat {
-	return []ImageFormat{FormatJPEG}
+func (p *WEBPProcessor) SupportedFormats() []ImageFormat {
+	return []ImageFormat{FormatWEBP}
 }
