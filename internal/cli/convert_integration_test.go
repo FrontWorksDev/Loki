@@ -312,6 +312,36 @@ func TestE2E_Convert_ディレクトリ変換_出力パス自動生成(t *testin
 	}
 }
 
+// --- E2E: Directory conversion with partial failures ---
+
+func TestE2E_Convert_ディレクトリ変換_一部失敗(t *testing.T) {
+	inputDir := t.TempDir()
+	outputDir := filepath.Join(t.TempDir(), "output")
+
+	setupTestDir(t, inputDir, map[string][]byte{
+		"good.jpg":    createTestJPEG(t, 50, 50, 90),
+		"corrupt.jpg": []byte("this is not a valid jpeg"),
+	})
+
+	out, err := executeConvert(t, "convert", inputDir, "-f", "png", "-r", "-o", outputDir)
+
+	if err == nil {
+		t.Fatal("一部失敗時にエラーが返されるべきです")
+	}
+
+	if !strings.Contains(out, "成功 1") {
+		t.Errorf("出力に「成功 1」が含まれていません: %s", out)
+	}
+	if !strings.Contains(out, "失敗 1") {
+		t.Errorf("出力に「失敗 1」が含まれていません: %s", out)
+	}
+
+	// The valid file should still be converted.
+	if _, err := os.Stat(filepath.Join(outputDir, "good.png")); os.IsNotExist(err) {
+		t.Error("good.png が出力されていません")
+	}
+}
+
 // --- E2E: Flag combination tests ---
 
 func TestE2E_Convert_フラグ組み合わせ(t *testing.T) {

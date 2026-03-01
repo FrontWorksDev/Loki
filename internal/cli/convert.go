@@ -254,6 +254,22 @@ func convertDirectoryWithText(cmd *cobra.Command, items []processor.BatchConvert
 	return nil
 }
 
+// convertResultsToBatchResults converts BatchConvertResult slice to BatchResult slice for TUI compatibility.
+func convertResultsToBatchResults(results []processor.BatchConvertResult) []processor.BatchResult {
+	batchResults := make([]processor.BatchResult, len(results))
+	for i, r := range results {
+		batchResults[i] = processor.BatchResult{
+			Item: processor.BatchItem{
+				InputPath:  r.Item.InputPath,
+				OutputPath: r.Item.OutputPath,
+			},
+			Result: r.Result,
+			Error:  r.Error,
+		}
+	}
+	return batchResults
+}
+
 func convertDirectoryWithTUI(cmd *cobra.Command, items []processor.BatchConvertItem) error {
 	m := tui.NewModel()
 	p := tea.NewProgram(m)
@@ -273,21 +289,8 @@ func convertDirectoryWithTUI(cmd *cobra.Command, items []processor.BatchConvertI
 			return
 		}
 
-		// Convert BatchConvertResult to BatchResult for TUI compatibility.
-		batchResults := make([]processor.BatchResult, len(results))
-		for i, r := range results {
-			batchResults[i] = processor.BatchResult{
-				Item: processor.BatchItem{
-					InputPath:  r.Item.InputPath,
-					OutputPath: r.Item.OutputPath,
-				},
-				Result: r.Result,
-				Error:  r.Error,
-			}
-		}
-
 		p.Send(tui.BatchCompleteMsg{
-			Results: batchResults,
+			Results: convertResultsToBatchResults(results),
 		})
 	}()
 

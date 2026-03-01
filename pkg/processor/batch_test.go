@@ -790,6 +790,109 @@ func TestDefaultBatchProcessor_ProcessBatchConvert_進捗通知(t *testing.T) {
 	}
 }
 
+func TestDefaultBatchProcessor_ProcessBatchConvert_存在しないファイル(t *testing.T) {
+	bp := NewDefaultBatchProcessor(WithMaxWorkers(1))
+	items := []BatchConvertItem{
+		{
+			InputPath:  "/nonexistent/file.jpg",
+			OutputPath: filepath.Join(t.TempDir(), "out.png"),
+			Options:    DefaultConvertOptions(FormatPNG),
+		},
+	}
+
+	results, err := bp.ProcessBatchConvert(context.Background(), items)
+	if err != nil {
+		t.Fatalf("ProcessBatchConvert() error = %v", err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("ProcessBatchConvert() returned %d results, want 1", len(results))
+	}
+	if results[0].IsSuccess() {
+		t.Error("result should be failure for nonexistent file")
+	}
+}
+
+func TestDefaultBatchProcessor_ProcessBatchConvert_破損画像(t *testing.T) {
+	inputDir := t.TempDir()
+	inputPath := writeTestFile(t, inputDir, "corrupt.jpg", []byte("not a valid jpeg"))
+
+	bp := NewDefaultBatchProcessor(WithMaxWorkers(1))
+	items := []BatchConvertItem{
+		{
+			InputPath:  inputPath,
+			OutputPath: filepath.Join(t.TempDir(), "corrupt.png"),
+			Options:    DefaultConvertOptions(FormatPNG),
+		},
+	}
+
+	results, err := bp.ProcessBatchConvert(context.Background(), items)
+	if err != nil {
+		t.Fatalf("ProcessBatchConvert() error = %v", err)
+	}
+	if results[0].IsSuccess() {
+		t.Error("result should be failure for corrupt image")
+	}
+}
+
+func TestDefaultBatchProcessor_ProcessBatchConvert_全フォーマットプロセッサ選択(t *testing.T) {
+	inputDir := t.TempDir()
+	outputDir := t.TempDir()
+
+	pngData := createTestPNG(t, 50, 50)
+	jpegData := createTestJPEG(t, 50, 50, 90)
+
+	inputPNG := writeTestFile(t, inputDir, "test.png", pngData)
+	inputJPEG := writeTestFile(t, inputDir, "test.jpg", jpegData)
+
+	// Test all three output format processor selections.
+	items := []BatchConvertItem{
+		{
+			InputPath:  inputPNG,
+			OutputPath: filepath.Join(outputDir, "out.jpg"),
+			Options:    DefaultConvertOptions(FormatJPEG),
+		},
+		{
+			InputPath:  inputJPEG,
+			OutputPath: filepath.Join(outputDir, "out.png"),
+			Options:    DefaultConvertOptions(FormatPNG),
+		},
+		{
+			InputPath:  inputPNG,
+			OutputPath: filepath.Join(outputDir, "out.webp"),
+			Options:    DefaultConvertOptions(FormatWEBP),
+		},
+	}
+
+	bp := NewDefaultBatchProcessor(WithMaxWorkers(1))
+	results, err := bp.ProcessBatchConvert(context.Background(), items)
+	if err != nil {
+		t.Fatalf("ProcessBatchConvert() error = %v", err)
+	}
+
+	for i, r := range results {
+		if !r.IsSuccess() {
+			t.Errorf("result[%d] is not success: %v", i, r.Error)
+		}
+	}
+}
+
+func TestScanDirectoryForConvert_存在しないディレクトリ(t *testing.T) {
+	_, err := ScanDirectoryForConvert("/nonexistent/dir", t.TempDir(), FormatWEBP)
+	if err == nil {
+		t.Error("ScanDirectoryForConvert() should return error for nonexistent directory")
+	}
+}
+
+func TestScanDirectoryForConvert_非ディレクトリ入力(t *testing.T) {
+	tmpDir := t.TempDir()
+	filePath := writeTestFile(t, tmpDir, "notadir.jpg", createTestJPEG(t, 10, 10, 80))
+
+	_, err := ScanDirectoryForConvert(filePath, t.TempDir(), FormatWEBP)
+	if err == nil {
+		t.Error("ScanDirectoryForConvert() should return error for non-directory input")
+	}
+}
+
 func TestScanDirectoryForConvert_空ディレクトリ(t *testing.T) {
 	inputDir := t.TempDir()
 	outputDir := t.TempDir()
