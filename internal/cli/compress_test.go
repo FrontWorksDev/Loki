@@ -100,11 +100,22 @@ func resetGlobals(t *testing.T) {
 		output = ""
 		recursive = false
 		useTUI = false
+		convertFormat = ""
+		convertQuality = 0
+		convertLevel = "medium"
+		convertOutput = ""
+		convertRecursive = false
+		convertUseTUI = false
 		cfgFile = ""
 		rootCmd.SetArgs([]string{})
 		// Reset pflag Changed state so flags don't carry over between tests
 		for _, name := range []string{"quality", "level", "output", "recursive", "tui"} {
 			if f := compressCmd.Flags().Lookup(name); f != nil {
+				f.Changed = false
+			}
+		}
+		for _, name := range []string{"format", "quality", "level", "output", "recursive", "tui"} {
+			if f := convertCmd.Flags().Lookup(name); f != nil {
 				f.Changed = false
 			}
 		}
