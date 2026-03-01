@@ -279,7 +279,6 @@ func (bp *DefaultBatchProcessor) processConvertItem(ctx context.Context, item Ba
 	if err != nil {
 		return BatchConvertResult{Item: item, Error: fmt.Errorf("failed to create output file: %w", err)}
 	}
-	defer func() { _ = outFile.Close() }()
 
 	// Select processor based on output format.
 	var proc Processor
@@ -291,6 +290,7 @@ func (bp *DefaultBatchProcessor) processConvertItem(ctx context.Context, item Ba
 	case FormatWEBP:
 		proc = bp.webpProc
 	default:
+		_ = outFile.Close()
 		return BatchConvertResult{Item: item, Error: fmt.Errorf("unsupported output format: %s", item.Options.Format)}
 	}
 
@@ -299,6 +299,12 @@ func (bp *DefaultBatchProcessor) processConvertItem(ctx context.Context, item Ba
 		_ = outFile.Close()
 		_ = os.Remove(item.OutputPath)
 		return BatchConvertResult{Item: item, Error: err}
+	}
+
+	// Explicitly close to catch buffered write/flush errors (e.g., disk full).
+	if err := outFile.Close(); err != nil {
+		_ = os.Remove(item.OutputPath)
+		return BatchConvertResult{Item: item, Error: fmt.Errorf("failed to close output file: %w", err)}
 	}
 
 	return BatchConvertResult{Item: item, Result: result}
@@ -327,6 +333,9 @@ func ScanDirectoryForConvert(inputDir, outputDir string, targetFormat ImageForma
 	for _, opt := range opts {
 		opt(cfg)
 	}
+	// Ensure the effective conversion format matches the targetFormat used for output paths.
+	// This prevents mismatches where WithConvertOptions sets a different Format.
+	cfg.opts.Format = targetFormat
 
 	info, err := os.Stat(inputDir)
 	if err != nil {
