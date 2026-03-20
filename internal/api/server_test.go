@@ -15,7 +15,7 @@ func getFreePort() (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer l.Close()
+	defer func() { _ = l.Close() }()
 	return l.Addr().(*net.TCPAddr).Port, nil
 }
 
@@ -70,7 +70,7 @@ func TestServerStartAndShutdown(t *testing.T) {
 	if err != nil {
 		t.Fatalf("health check request failed: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected status 200, got %d", resp.StatusCode)
@@ -115,21 +115,21 @@ func TestOpenAPIDocsEndpoint(t *testing.T) {
 	srv := NewServer(cfg)
 
 	go func() {
-		srv.Start()
+		_ = srv.Start()
 	}()
 
 	baseURL := fmt.Sprintf("http://localhost:%d", port)
 	if !waitForServer(baseURL, 3*time.Second) {
 		t.Fatal("server did not start in time")
 	}
-	defer srv.Shutdown(context.Background())
+	defer func() { _ = srv.Shutdown(context.Background()) }()
 
 	// OpenAPIドキュメントが /docs で取得できることを確認
 	resp, err := http.Get(baseURL + "/docs")
 	if err != nil {
 		t.Fatalf("docs request failed: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected status 200 for /docs, got %d", resp.StatusCode)
@@ -140,7 +140,7 @@ func TestOpenAPIDocsEndpoint(t *testing.T) {
 	if err != nil {
 		t.Fatalf("openapi.json request failed: %v", err)
 	}
-	defer resp2.Body.Close()
+	defer func() { _ = resp2.Body.Close() }()
 
 	if resp2.StatusCode != http.StatusOK {
 		t.Errorf("expected status 200 for /openapi.json, got %d", resp2.StatusCode)
@@ -152,7 +152,7 @@ func waitForServer(baseURL string, timeout time.Duration) bool {
 	for time.Now().Before(deadline) {
 		resp, err := http.Get(baseURL + "/api/v1/health")
 		if err == nil {
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			return true
 		}
 		time.Sleep(50 * time.Millisecond)
