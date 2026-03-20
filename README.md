@@ -96,6 +96,21 @@ compress:
 
 - [asdf](https://asdf-vm.com/) (バージョンマネージャー)
 - Go 1.25.6 (`asdf install` で自動インストール)
+- lefthook 2.1.1 (`asdf install` で自動インストール)
+
+### セットアップ
+
+```bash
+# asdf で Go と lefthook をインストール
+asdf plugin add golang    # 初回のみ
+asdf plugin add lefthook  # 初回のみ
+asdf install
+
+# lefthook の Git フックを有効化
+lefthook install
+```
+
+lefthook により、コミット時に自動で `goimports` と `golangci-lint` が実行されます。
 
 ### ビルド・テスト・リント
 

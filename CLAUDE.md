@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Answers should be in Japanese.
 - TODOs should always include creating a branch, testing the implementation, committing
 - Whenever you modify a feature, be sure to modify (or create) a test and make sure the test passes!
+- Before committing, ensure `lefthook install` has been run and that `golangci-lint run ./...` passes. lefthook pre-commit hook runs goimports and golangci-lint automatically, so do not skip hooks.
 
 ## Repository Configuration
 
@@ -32,17 +33,27 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - asdf (version manager)
 - Go 1.25.6 (managed by asdf via `.tool-versions`)
+- lefthook 2.1.1 (managed by asdf via `.tool-versions`)
 
 ### Getting Started
 
 1. Ensure asdf is installed: `asdf --version`
-2. Install the golang plugin if not already installed: `asdf plugin add golang` (if needed)
-3. Install Go 1.25.6: `asdf install`
-4. Install development tools:
+2. Install plugins if not already installed: `asdf plugin add golang && asdf plugin add lefthook`
+3. Install tools: `asdf install`
+4. Enable Git hooks: `lefthook install`
+5. Install development tools:
    - gopls (Go language server)
    - delve (debugger)
-   - goimports (import formatter)
-   - golangci-lint (linter)
+   - goimports (import formatter) - **required by lefthook pre-commit**
+   - golangci-lint (linter) - **required by lefthook pre-commit**
+
+### Git Hooks (lefthook)
+
+lefthook (`lefthook.yml`) manages Git hooks:
+- **pre-commit**: `goimports` (auto-format) + `golangci-lint` (lint check)
+- **pre-push**: `go test -race ./...`
+
+Commits will be rejected if lint errors exist. Always ensure `lefthook install` has been run.
 
 ## Common Development Commands
 
