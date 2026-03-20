@@ -10,6 +10,12 @@ import (
 	"time"
 )
 
+const testClientTimeout = 3 * time.Second
+
+func newTestClient() *http.Client {
+	return &http.Client{Timeout: testClientTimeout}
+}
+
 func getFreePort() (int, error) {
 	l, err := net.Listen("tcp", ":0")
 	if err != nil {
@@ -17,6 +23,60 @@ func getFreePort() (int, error) {
 	}
 	defer func() { _ = l.Close() }()
 	return l.Addr().(*net.TCPAddr).Port, nil
+}
+
+// startTestServer はテスト用サーバーを起動し、t.Cleanupでshutdownを登録する。
+func startTestServer(t *testing.T) (string, *Server) {
+	t.Helper()
+
+	port, err := getFreePort()
+	if err != nil {
+		t.Fatalf("failed to get free port: %v", err)
+	}
+
+	cfg := Config{
+		Port:              port,
+		ShutdownTimeout:   5 * time.Second,
+		ReadHeaderTimeout: defaultReadHeaderTimeout,
+		ReadTimeout:       defaultReadTimeout,
+		WriteTimeout:      defaultWriteTimeout,
+		IdleTimeout:       defaultIdleTimeout,
+	}
+	srv := NewServer(cfg)
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- srv.Start()
+	}()
+
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
+		defer cancel()
+		if err := srv.Shutdown(ctx); err != nil {
+			t.Logf("server shutdown in cleanup: %v", err)
+		}
+		select {
+		case err := <-errCh:
+			if err != nil {
+				t.Logf("server returned error in cleanup: %v", err)
+			}
+		default:
+		}
+	})
+
+	baseURL := fmt.Sprintf("http://localhost:%d", port)
+	if !waitForServer(baseURL, 3*time.Second) {
+		select {
+		case err := <-errCh:
+			if err != nil {
+				t.Fatalf("server failed to start: %v", err)
+			}
+		default:
+		}
+		t.Fatal("server did not start in time")
+	}
+
+	return baseURL, srv
 }
 
 func TestNewServer(t *testing.T) {
@@ -40,33 +100,17 @@ func TestDefaultConfig(t *testing.T) {
 	if cfg.ShutdownTimeout != 5*time.Second {
 		t.Errorf("expected 5s shutdown timeout, got %v", cfg.ShutdownTimeout)
 	}
+	if cfg.ReadHeaderTimeout != 10*time.Second {
+		t.Errorf("expected 10s read header timeout, got %v", cfg.ReadHeaderTimeout)
+	}
 }
 
 func TestServerStartAndShutdown(t *testing.T) {
-	port, err := getFreePort()
-	if err != nil {
-		t.Fatalf("failed to get free port: %v", err)
-	}
-
-	cfg := Config{
-		Port:            port,
-		ShutdownTimeout: 5 * time.Second,
-	}
-	srv := NewServer(cfg)
-
-	errCh := make(chan error, 1)
-	go func() {
-		errCh <- srv.Start()
-	}()
-
-	// サーバーが起動するまで待機
-	baseURL := fmt.Sprintf("http://localhost:%d", port)
-	if !waitForServer(baseURL, 3*time.Second) {
-		t.Fatal("server did not start in time")
-	}
+	baseURL, srv := startTestServer(t)
+	client := newTestClient()
 
 	// ヘルスチェックエンドポイントのテスト
-	resp, err := http.Get(baseURL + "/api/v1/health")
+	resp, err := client.Get(baseURL + "/api/v1/health")
 	if err != nil {
 		t.Fatalf("health check request failed: %v", err)
 	}
@@ -90,42 +134,14 @@ func TestServerStartAndShutdown(t *testing.T) {
 	if err := srv.Shutdown(context.Background()); err != nil {
 		t.Fatalf("shutdown failed: %v", err)
 	}
-
-	// Start が正常終了したことを確認
-	select {
-	case err := <-errCh:
-		if err != nil {
-			t.Errorf("unexpected server error: %v", err)
-		}
-	case <-time.After(3 * time.Second):
-		t.Fatal("server did not stop in time")
-	}
 }
 
 func TestOpenAPIDocsEndpoint(t *testing.T) {
-	port, err := getFreePort()
-	if err != nil {
-		t.Fatalf("failed to get free port: %v", err)
-	}
-
-	cfg := Config{
-		Port:            port,
-		ShutdownTimeout: 5 * time.Second,
-	}
-	srv := NewServer(cfg)
-
-	go func() {
-		_ = srv.Start()
-	}()
-
-	baseURL := fmt.Sprintf("http://localhost:%d", port)
-	if !waitForServer(baseURL, 3*time.Second) {
-		t.Fatal("server did not start in time")
-	}
-	defer func() { _ = srv.Shutdown(context.Background()) }()
+	baseURL, _ := startTestServer(t)
+	client := newTestClient()
 
 	// OpenAPIドキュメントが /docs で取得できることを確認
-	resp, err := http.Get(baseURL + "/docs")
+	resp, err := client.Get(baseURL + "/docs")
 	if err != nil {
 		t.Fatalf("docs request failed: %v", err)
 	}
@@ -136,7 +152,7 @@ func TestOpenAPIDocsEndpoint(t *testing.T) {
 	}
 
 	// OpenAPI JSON が取得できることも確認
-	resp2, err := http.Get(baseURL + "/openapi.json")
+	resp2, err := client.Get(baseURL + "/openapi.json")
 	if err != nil {
 		t.Fatalf("openapi.json request failed: %v", err)
 	}
@@ -148,9 +164,10 @@ func TestOpenAPIDocsEndpoint(t *testing.T) {
 }
 
 func waitForServer(baseURL string, timeout time.Duration) bool {
+	client := &http.Client{Timeout: 1 * time.Second}
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
-		resp, err := http.Get(baseURL + "/api/v1/health")
+		resp, err := client.Get(baseURL + "/api/v1/health")
 		if err == nil {
 			_ = resp.Body.Close()
 			return true

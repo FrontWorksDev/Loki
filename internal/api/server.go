@@ -12,21 +12,33 @@ import (
 )
 
 const (
-	defaultPort            = 8080
-	defaultShutdownTimeout = 5 * time.Second
+	defaultPort              = 8080
+	defaultShutdownTimeout   = 5 * time.Second
+	defaultReadHeaderTimeout = 10 * time.Second
+	defaultReadTimeout       = 30 * time.Second
+	defaultWriteTimeout      = 30 * time.Second
+	defaultIdleTimeout       = 120 * time.Second
 )
 
 // Config はAPIサーバーの設定を保持する。
 type Config struct {
-	Port            int
-	ShutdownTimeout time.Duration
+	Port              int
+	ShutdownTimeout   time.Duration
+	ReadHeaderTimeout time.Duration
+	ReadTimeout       time.Duration
+	WriteTimeout      time.Duration
+	IdleTimeout       time.Duration
 }
 
 // DefaultConfig はデフォルト設定を返す。
 func DefaultConfig() Config {
 	return Config{
-		Port:            defaultPort,
-		ShutdownTimeout: defaultShutdownTimeout,
+		Port:              defaultPort,
+		ShutdownTimeout:   defaultShutdownTimeout,
+		ReadHeaderTimeout: defaultReadHeaderTimeout,
+		ReadTimeout:       defaultReadTimeout,
+		WriteTimeout:      defaultWriteTimeout,
+		IdleTimeout:       defaultIdleTimeout,
 	}
 }
 
@@ -52,8 +64,12 @@ func NewServer(cfg Config) *Server {
 		router: router,
 		api:    api,
 		httpServer: &http.Server{
-			Addr:    fmt.Sprintf(":%d", cfg.Port),
-			Handler: router,
+			Addr:              fmt.Sprintf(":%d", cfg.Port),
+			Handler:           router,
+			ReadHeaderTimeout: cfg.ReadHeaderTimeout,
+			ReadTimeout:       cfg.ReadTimeout,
+			WriteTimeout:      cfg.WriteTimeout,
+			IdleTimeout:       cfg.IdleTimeout,
 		},
 	}
 
