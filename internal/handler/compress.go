@@ -23,15 +23,6 @@ type CompressInput struct {
 	RawBody huma.MultipartFormFiles[CompressFormData]
 }
 
-// CompressOutput は圧縮エンドポイントのレスポンスを表す。
-type CompressOutput struct {
-	ContentType       string `header:"Content-Type"`
-	XOriginalSize     string `header:"X-Original-Size"`
-	XCompressedSize   string `header:"X-Compressed-Size"`
-	XCompressionRatio string `header:"X-Compression-Ratio"`
-	Body              []byte
-}
-
 // CompressHandler は画像圧縮ハンドラーを表す。
 type CompressHandler struct {
 	processors map[processor.ImageFormat]processor.Processor
@@ -43,7 +34,7 @@ func NewCompressHandler(processors map[processor.ImageFormat]processor.Processor
 }
 
 // Handle は画像圧縮リクエストを処理する。
-func (h *CompressHandler) Handle(ctx context.Context, input *CompressInput) (*CompressOutput, error) {
+func (h *CompressHandler) Handle(ctx context.Context, input *CompressInput) (*huma.StreamResponse, error) {
 	data := input.RawBody.Data()
 
 	if !data.File.IsSet {
@@ -72,12 +63,20 @@ func (h *CompressHandler) Handle(ctx context.Context, input *CompressInput) (*Co
 		return nil, huma.Error500InternalServerError("圧縮処理に失敗しました", err)
 	}
 
-	return &CompressOutput{
-		ContentType:       format.MIMEType(),
-		XOriginalSize:     fmt.Sprintf("%d", result.OriginalSize),
-		XCompressedSize:   fmt.Sprintf("%d", result.CompressedSize),
-		XCompressionRatio: fmt.Sprintf("%.1f", result.CompressionRatio()),
-		Body:              buf.Bytes(),
+	compressed := buf.Bytes()
+	mimeType := format.MIMEType()
+	origSize := fmt.Sprintf("%d", result.OriginalSize)
+	compSize := fmt.Sprintf("%d", result.CompressedSize)
+	ratio := fmt.Sprintf("%.1f", result.CompressionRatio())
+
+	return &huma.StreamResponse{
+		Body: func(ctx huma.Context) {
+			ctx.SetHeader("Content-Type", mimeType)
+			ctx.SetHeader("X-Original-Size", origSize)
+			ctx.SetHeader("X-Compressed-Size", compSize)
+			ctx.SetHeader("X-Compression-Ratio", ratio)
+			_, _ = ctx.BodyWriter().Write(compressed)
+		},
 	}, nil
 }
 
