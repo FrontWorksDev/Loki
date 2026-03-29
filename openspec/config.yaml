@@ -1,0 +1,26 @@
+schema: spec-driven
+
+context: |
+  Tech stack: Go 1.25.6, Cobra (CLI), Huma v2 (API), Chi v5 (router), BubbleTea (TUI)
+  Domain: 画像圧縮・変換CLIツール (JPEG, PNG, WebP対応)
+  Architecture: cmd/ → internal/cli/ → pkg/processor/ の3層構造
+  Testing: table-driven tests, go test -race
+  Linting: golangci-lint + goimports (lefthook pre-commit)
+  Language: コミットメッセージ・ドキュメントは日本語
+  Conventions: standard Go naming
+
+rules:
+  proposal:
+    - 提案は日本語で記述する
+    - 既存のアーキテクチャ（cmd/internal/pkg構造）に従う
+    - 非目標（Non-goals）セクションを含める
+  specs:
+    - pkg/processor の公開APIに対する仕様を明確にする
+    - エラーハンドリングのパターンを記述する
+    - 要件にはSHALL/MUSTを使用する
+  design:
+    - 既存パッケージ構造との整合性を示す
+    - 依存関係の方向を明示する
+  tasks:
+    - タスクには必ずブランチ作成・テスト・コミットを含める
+    - 1タスクは1つの論理的な変更単位にする
