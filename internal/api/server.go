@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/FrontWorksDev/Loki/internal/handler"
+	"github.com/FrontWorksDev/Loki/pkg/processor"
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 	"github.com/go-chi/chi/v5"
@@ -73,7 +75,14 @@ func NewServer(cfg Config) *Server {
 		},
 	}
 
-	RegisterRoutes(api)
+	processors := map[processor.ImageFormat]processor.Processor{
+		processor.FormatJPEG: processor.NewJPEGProcessor(),
+		processor.FormatPNG:  processor.NewPNGProcessor(),
+		processor.FormatWEBP: processor.NewWEBPProcessor(),
+	}
+	compressHandler := handler.NewCompressHandler(processors)
+
+	RegisterRoutes(api, compressHandler)
 
 	return s
 }

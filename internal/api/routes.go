@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/FrontWorksDev/Loki/internal/handler"
 	"github.com/danielgtaylor/huma/v2"
 )
 
@@ -15,7 +16,7 @@ type HealthOutput struct {
 }
 
 // RegisterRoutes はAPIルートを登録する。
-func RegisterRoutes(api huma.API) {
+func RegisterRoutes(api huma.API, compressHandler *handler.CompressHandler) {
 	huma.Register(api, huma.Operation{
 		OperationID: "health-check",
 		Summary:     "ヘルスチェック",
@@ -28,4 +29,14 @@ func RegisterRoutes(api huma.API) {
 		resp.Body.Status = "ok"
 		return resp, nil
 	})
+
+	huma.Register(api, huma.Operation{
+		OperationID:  "compress-image",
+		Summary:      "画像を圧縮する",
+		Description:  "画像ファイルをアップロードして圧縮する。JPEG/PNG/WebP対応。",
+		Method:       http.MethodPost,
+		Path:         "/api/v1/compress",
+		Tags:         []string{"Image"},
+		MaxBodyBytes: 50 * 1024 * 1024, // 50MB
+	}, compressHandler.Handle)
 }
