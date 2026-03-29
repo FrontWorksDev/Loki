@@ -33,7 +33,7 @@ func RegisterRoutes(api huma.API, compressHandler *handler.CompressHandler) {
 	huma.Register(api, huma.Operation{
 		OperationID:  "compress-image",
 		Summary:      "画像を圧縮する",
-		Description:  "画像ファイルをアップロードして圧縮する。JPEG/PNG/WebP対応。",
+		Description:  "画像ファイルをアップロードして圧縮する。JPEG/PNG/WebP対応。\n\n圧縮の強さはqualityまたはlevelで指定できる。qualityは1-100の数値で直接指定、levelはlow/medium/highの3段階から選択。両方指定した場合はqualityが優先される。\n\nレスポンスヘッダーに圧縮結果のメタデータ（元サイズ、圧縮後サイズ、圧縮率）を付与する。",
 		Method:       http.MethodPost,
 		Path:         "/api/v1/compress",
 		Tags:         []string{"Image"},
