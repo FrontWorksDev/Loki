@@ -43,8 +43,8 @@ func setupTestAPI(t *testing.T) humatest.TestAPI {
 func createTestJPEG(t *testing.T, width, height, quality int) []byte {
 	t.Helper()
 	img := image.NewRGBA(image.Rect(0, 0, width, height))
-	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
+	for y := range height {
+		for x := range width {
 			img.Set(x, y, color.RGBA{
 				R: uint8(x * 255 / width),
 				G: uint8(y * 255 / height),
@@ -62,8 +62,8 @@ func createTestJPEG(t *testing.T, width, height, quality int) []byte {
 func createTestPNG(t *testing.T, width, height int) []byte {
 	t.Helper()
 	img := image.NewRGBA(image.Rect(0, 0, width, height))
-	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
+	for y := range height {
+		for x := range width {
 			img.Set(x, y, color.RGBA{
 				R: uint8(x * 255 / width),
 				G: uint8(y * 255 / height),
@@ -279,6 +279,52 @@ func TestDetectFormatFromMIME(t *testing.T) {
 				t.Errorf("detectFormatFromMIME(%q) = %v, want %v", tt.mimeType, got, tt.expected)
 			}
 		})
+	}
+}
+
+func TestCompressNoFile(t *testing.T) {
+	api := setupTestAPI(t)
+	body, ct := buildMultipartRequest(t, nil, "", "", nil)
+
+	resp := doMultipartRequest(t, api, body, ct)
+
+	if resp.Code != http.StatusUnprocessableEntity {
+		t.Errorf("expected 422, got %d: %s", resp.Code, resp.Body.String())
+	}
+}
+
+func TestCompressProcessorNotFound(t *testing.T) {
+	// JPEGプロセッサのみ登録し、PNGを送信
+	_, api := humatest.New(t)
+	h := NewCompressHandler(map[processor.ImageFormat]processor.Processor{
+		processor.FormatJPEG: processor.NewJPEGProcessor(),
+	})
+	huma.Register(api, huma.Operation{
+		OperationID:  "compress-image",
+		Method:       http.MethodPost,
+		Path:         "/api/v1/compress",
+		MaxBodyBytes: 50 * 1024 * 1024,
+	}, h.Handle)
+
+	pngData := createTestPNG(t, 100, 100)
+	body, ct := buildMultipartRequest(t, nil, "test.png", "image/png", pngData)
+
+	resp := doMultipartRequest(t, api, body, ct)
+
+	if resp.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d: %s", resp.Code, resp.Body.String())
+	}
+}
+
+func TestCompressInvalidImageData(t *testing.T) {
+	api := setupTestAPI(t)
+	// 壊れたJPEGデータを送信して圧縮エラーを発生させる
+	body, ct := buildMultipartRequest(t, nil, "broken.jpg", "image/jpeg", []byte("not a real jpeg"))
+
+	resp := doMultipartRequest(t, api, body, ct)
+
+	if resp.Code != http.StatusInternalServerError {
+		t.Errorf("expected 500, got %d: %s", resp.Code, resp.Body.String())
 	}
 }
 
