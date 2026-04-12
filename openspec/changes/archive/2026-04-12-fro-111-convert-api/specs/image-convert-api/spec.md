@@ -16,11 +16,15 @@
 - **THEN** PNG形式に変換された画像バイナリが返され、`Content-Type` は `image/png` である
 
 ### Requirement: 出力品質制御
-システムは `quality` パラメータ（1-100の整数）および `level` パラメータ（low/medium/high）による出力品質制御を提供しなければならない（MUST）。`quality` が指定された場合は `level` より優先される。
+システムは `quality` パラメータ（0-100の整数）および `level` パラメータ（low/medium/high）による出力品質制御を提供しなければならない（MUST）。`quality` が1-100の値で指定された場合は `level` より優先される。`quality=0` または `quality` 未指定の場合はデフォルト値を使用し、`level` が指定されていればその `level` に対応する品質、`level` も未指定であれば `medium` 相当の品質を適用する。
 
 #### Scenario: quality指定での変換
 - **WHEN** `quality=80` を指定してフォーマット変換リクエストを送信する
 - **THEN** 指定された品質で変換された画像が返される
+
+#### Scenario: quality=0指定での変換
+- **WHEN** `quality=0` を指定してフォーマット変換リクエストを送信する
+- **THEN** `quality` 未指定時と同様にデフォルトの品質設定が適用される
 
 #### Scenario: level指定での変換
 - **WHEN** `level=high` を指定してフォーマット変換リクエストを送信する

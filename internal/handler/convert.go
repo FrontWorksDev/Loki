@@ -46,6 +46,10 @@ func (h *ConvertHandler) Handle(ctx context.Context, input *ConvertInput) (*huma
 		return nil, huma.Error400BadRequest("非対応の画像フォーマットです", err)
 	}
 
+	if data.Format == "" {
+		return nil, huma.Error422UnprocessableEntity("出力フォーマットが指定されていません")
+	}
+
 	outputFormat, err := parseImageFormat(data.Format)
 	if err != nil {
 		return nil, huma.Error400BadRequest("非対応の出力フォーマットです", err)

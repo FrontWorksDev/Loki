@@ -153,8 +153,9 @@ func TestConvertUnsupportedOutputFormat(t *testing.T) {
 
 	resp := doConvertRequest(t, api, body, ct)
 
-	if resp.Code == http.StatusOK {
-		t.Error("expected error for unsupported output format, got 200")
+	// Humaのenumバリデーションにより422が返される
+	if resp.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("expected 422 for unsupported output format, got %d: %s", resp.Code, resp.Body.String())
 	}
 }
 
@@ -176,8 +177,8 @@ func TestConvertNoFormat(t *testing.T) {
 
 	resp := doConvertRequest(t, api, body, ct)
 
-	if resp.Code == http.StatusOK {
-		t.Error("expected error for missing format, got 200")
+	if resp.Code != http.StatusUnprocessableEntity {
+		t.Errorf("expected 422, got %d: %s", resp.Code, resp.Body.String())
 	}
 }
 
@@ -187,8 +188,9 @@ func TestConvertUnsupportedInputFormat(t *testing.T) {
 
 	resp := doConvertRequest(t, api, body, ct)
 
-	if resp.Code == http.StatusOK {
-		t.Error("expected error for unsupported input format, got 200")
+	// HumaのcontentTypeバリデーションにより422が返される
+	if resp.Code != http.StatusUnprocessableEntity {
+		t.Errorf("expected 422, got %d: %s", resp.Code, resp.Body.String())
 	}
 }
 
