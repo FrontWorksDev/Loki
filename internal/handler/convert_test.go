@@ -2,6 +2,7 @@ package handler
 
 import (
 	"bytes"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -223,6 +224,122 @@ func TestConvertFileTooLarge(t *testing.T) {
 
 	if resp.Code != http.StatusRequestEntityTooLarge {
 		t.Errorf("expected 413, got %d: %s", resp.Code, resp.Body.String())
+	}
+}
+
+func TestConvertProcessorNotFound(t *testing.T) {
+	// WebPプロセッサのみ登録し、JPEG→PNG変換を試みる
+	_, api := humatest.New(t)
+	h := NewConvertHandler(map[processor.ImageFormat]processor.Processor{
+		processor.FormatWEBP: processor.NewWEBPProcessor(),
+	})
+	huma.Register(api, huma.Operation{
+		OperationID:  "convert-image",
+		Method:       http.MethodPost,
+		Path:         "/api/v1/convert",
+		MaxBodyBytes: 50 * 1024 * 1024,
+	}, h.Handle)
+
+	jpegData := createTestJPEG(t, 10, 10, 50)
+	body, ct := buildMultipartRequest(t, map[string]string{"format": "png"}, "test.jpg", "image/jpeg", jpegData)
+
+	resp := doConvertRequest(t, api, body, ct)
+
+	if resp.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d: %s", resp.Code, resp.Body.String())
+	}
+}
+
+func TestConvertSameFormatProcessorNotFound(t *testing.T) {
+	// プロセッサを空にして同一フォーマット変換を試みる
+	_, api := humatest.New(t)
+	h := NewConvertHandler(map[processor.ImageFormat]processor.Processor{})
+	huma.Register(api, huma.Operation{
+		OperationID:  "convert-image",
+		Method:       http.MethodPost,
+		Path:         "/api/v1/convert",
+		MaxBodyBytes: 50 * 1024 * 1024,
+	}, h.Handle)
+
+	jpegData := createTestJPEG(t, 10, 10, 50)
+	body, ct := buildMultipartRequest(t, map[string]string{"format": "jpeg"}, "test.jpg", "image/jpeg", jpegData)
+
+	resp := doConvertRequest(t, api, body, ct)
+
+	if resp.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d: %s", resp.Code, resp.Body.String())
+	}
+}
+
+func TestConvertSameFormatCompressError(t *testing.T) {
+	// 同一フォーマットフォールバック時の圧縮エラー
+	_, api := humatest.New(t)
+	mock := &mockProcessor{compressErr: processor.ErrFileTooLarge}
+	h := NewConvertHandler(map[processor.ImageFormat]processor.Processor{
+		processor.FormatJPEG: mock,
+	})
+	huma.Register(api, huma.Operation{
+		OperationID:  "convert-image",
+		Method:       http.MethodPost,
+		Path:         "/api/v1/convert",
+		MaxBodyBytes: 50 * 1024 * 1024,
+	}, h.Handle)
+
+	jpegData := createTestJPEG(t, 10, 10, 50)
+	body, ct := buildMultipartRequest(t, map[string]string{"format": "jpeg"}, "test.jpg", "image/jpeg", jpegData)
+
+	resp := doConvertRequest(t, api, body, ct)
+
+	if resp.Code != http.StatusRequestEntityTooLarge {
+		t.Errorf("expected 413, got %d: %s", resp.Code, resp.Body.String())
+	}
+}
+
+func TestConvertInternalServerError(t *testing.T) {
+	_, api := humatest.New(t)
+	mock := &mockProcessor{convertErr: errors.New("unexpected internal error")}
+	h := NewConvertHandler(map[processor.ImageFormat]processor.Processor{
+		processor.FormatJPEG: mock,
+		processor.FormatWEBP: mock,
+	})
+	huma.Register(api, huma.Operation{
+		OperationID:  "convert-image",
+		Method:       http.MethodPost,
+		Path:         "/api/v1/convert",
+		MaxBodyBytes: 50 * 1024 * 1024,
+	}, h.Handle)
+
+	jpegData := createTestJPEG(t, 10, 10, 50)
+	body, ct := buildMultipartRequest(t, map[string]string{"format": "webp"}, "test.jpg", "image/jpeg", jpegData)
+
+	resp := doConvertRequest(t, api, body, ct)
+
+	if resp.Code != http.StatusInternalServerError {
+		t.Errorf("expected 500, got %d: %s", resp.Code, resp.Body.String())
+	}
+}
+
+func TestConvertDecodeError(t *testing.T) {
+	_, api := humatest.New(t)
+	mock := &mockProcessor{convertErr: errors.New("failed to decode image: invalid format")}
+	h := NewConvertHandler(map[processor.ImageFormat]processor.Processor{
+		processor.FormatJPEG: mock,
+		processor.FormatWEBP: mock,
+	})
+	huma.Register(api, huma.Operation{
+		OperationID:  "convert-image",
+		Method:       http.MethodPost,
+		Path:         "/api/v1/convert",
+		MaxBodyBytes: 50 * 1024 * 1024,
+	}, h.Handle)
+
+	jpegData := createTestJPEG(t, 10, 10, 50)
+	body, ct := buildMultipartRequest(t, map[string]string{"format": "webp"}, "test.jpg", "image/jpeg", jpegData)
+
+	resp := doConvertRequest(t, api, body, ct)
+
+	if resp.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d: %s", resp.Code, resp.Body.String())
 	}
 }
 
