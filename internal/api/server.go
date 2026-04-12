@@ -81,8 +81,9 @@ func NewServer(cfg Config) *Server {
 		processor.FormatWEBP: processor.NewWEBPProcessor(),
 	}
 	compressHandler := handler.NewCompressHandler(processors)
+	convertHandler := handler.NewConvertHandler(processors)
 
-	RegisterRoutes(api, compressHandler)
+	RegisterRoutes(api, compressHandler, convertHandler)
 
 	return s
 }

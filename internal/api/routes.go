@@ -16,7 +16,7 @@ type HealthOutput struct {
 }
 
 // RegisterRoutes はAPIルートを登録する。
-func RegisterRoutes(api huma.API, compressHandler *handler.CompressHandler) {
+func RegisterRoutes(api huma.API, compressHandler *handler.CompressHandler, convertHandler *handler.ConvertHandler) {
 	huma.Register(api, huma.Operation{
 		OperationID: "health-check",
 		Summary:     "ヘルスチェック",
@@ -55,4 +55,31 @@ func RegisterRoutes(api huma.API, compressHandler *handler.CompressHandler) {
 		},
 	}
 	huma.Register(api, compressOp, compressHandler.Handle)
+
+	convertOp := huma.Operation{
+		OperationID:  "convert-image",
+		Summary:      "画像フォーマットを変換する",
+		Description:  "画像ファイルをアップロードして指定フォーマットに変換する。JPEG/PNG/WebP間の相互変換に対応。\n\n出力品質はqualityまたはlevelで指定できる。qualityは1-100の数値で直接指定、levelはlow/medium/highの3段階から選択。両方指定した場合はqualityが優先される。\n\n同一フォーマットを指定した場合は圧縮処理にフォールバックする。\n\nレスポンスヘッダーに変換結果のメタデータ（元サイズ、変換後サイズ、元フォーマット、出力フォーマット）を付与する。",
+		Method:       http.MethodPost,
+		Path:         "/api/v1/convert",
+		Tags:         []string{"Image"},
+		MaxBodyBytes: 50 * 1024 * 1024, // 50MB
+		Responses: map[string]*huma.Response{
+			"200": {
+				Description: "変換された画像バイナリ",
+				Headers: map[string]*huma.Param{
+					"X-Original-Size":   {Description: "元のファイルサイズ（バイト）", Schema: &huma.Schema{Type: "integer", Format: "int64"}},
+					"X-Converted-Size":  {Description: "変換後のファイルサイズ（バイト）", Schema: &huma.Schema{Type: "integer", Format: "int64"}},
+					"X-Original-Format": {Description: "元の画像フォーマット", Schema: &huma.Schema{Type: "string"}},
+					"X-Output-Format":   {Description: "出力画像フォーマット", Schema: &huma.Schema{Type: "string"}},
+				},
+				Content: map[string]*huma.MediaType{
+					"image/*": {
+						Schema: &huma.Schema{Type: "string", Format: "binary"},
+					},
+				},
+			},
+		},
+	}
+	huma.Register(api, convertOp, convertHandler.Handle)
 }
