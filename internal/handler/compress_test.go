@@ -333,6 +333,7 @@ func TestCompressInvalidImageData(t *testing.T) {
 // mockProcessor はテスト用のモックプロセッサ。
 type mockProcessor struct {
 	compressErr error
+	convertErr  error
 }
 
 func (m *mockProcessor) Compress(_ context.Context, _ io.Reader, _ io.Writer, _ processor.CompressOptions) (*processor.Result, error) {
@@ -340,6 +341,9 @@ func (m *mockProcessor) Compress(_ context.Context, _ io.Reader, _ io.Writer, _ 
 }
 
 func (m *mockProcessor) Convert(_ context.Context, _ io.Reader, _ io.Writer, _ processor.ConvertOptions) (*processor.Result, error) {
+	if m.convertErr != nil {
+		return nil, m.convertErr
+	}
 	return nil, errors.New("not implemented")
 }
 
