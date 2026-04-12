@@ -42,9 +42,9 @@ func RegisterRoutes(api huma.API, compressHandler *handler.CompressHandler) {
 			"200": {
 				Description: "圧縮された画像バイナリ",
 				Headers: map[string]*huma.Param{
-					"X-Original-Size":     {Description: "元のファイルサイズ（バイト）", Schema: &huma.Schema{Type: "string"}},
-					"X-Compressed-Size":   {Description: "圧縮後のファイルサイズ（バイト）", Schema: &huma.Schema{Type: "string"}},
-					"X-Compression-Ratio": {Description: "圧縮率（パーセンテージ）", Schema: &huma.Schema{Type: "string"}},
+					"X-Original-Size":     {Description: "元のファイルサイズ（バイト）", Schema: &huma.Schema{Type: "integer", Format: "int64"}},
+					"X-Compressed-Size":   {Description: "圧縮後のファイルサイズ（バイト）", Schema: &huma.Schema{Type: "integer", Format: "int64"}},
+					"X-Compression-Ratio": {Description: "圧縮率（パーセンテージ）", Schema: &huma.Schema{Type: "number"}},
 				},
 				Content: map[string]*huma.MediaType{
 					"image/*": {

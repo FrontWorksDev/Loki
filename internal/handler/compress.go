@@ -3,7 +3,9 @@ package handler
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/FrontWorksDev/Loki/pkg/processor"
 	"github.com/danielgtaylor/huma/v2"
@@ -15,7 +17,7 @@ const maxFileSize = 50 * 1024 * 1024 // 50MB
 type CompressFormData struct {
 	File    huma.FormFile `form:"file" contentType:"image/jpeg,image/png,image/webp" required:"true" doc:"圧縮する画像ファイル（JPEG/PNG/WebP）"`
 	Quality int           `form:"quality" minimum:"0" maximum:"100" required:"false" doc:"圧縮品質（1-100）。0または未指定の場合はlevelに基づくデフォルト値を使用"`
-	Level   string        `form:"level" enum:"low,medium,high," required:"false" doc:"圧縮レベル。low=品質優先(JPEG:60), medium=バランス(JPEG:75,デフォルト), high=圧縮優先(JPEG:90)。quality指定時はqualityが優先"`
+	Level   string        `form:"level" enum:"low,medium,high," required:"false" doc:"圧縮レベル。low=圧縮優先(JPEG:60), medium=バランス(JPEG:75,デフォルト), high=品質優先(JPEG:90)。quality指定時はqualityが優先"`
 }
 
 // CompressInput は圧縮エンドポイントのリクエストを表す。
@@ -60,6 +62,12 @@ func (h *CompressHandler) Handle(ctx context.Context, input *CompressInput) (*hu
 	var buf bytes.Buffer
 	result, err := proc.Compress(ctx, data.File, &buf, opts)
 	if err != nil {
+		if errors.Is(err, processor.ErrFileTooLarge) {
+			return nil, huma.Error413RequestEntityTooLarge("ファイルサイズが上限を超えています", err)
+		}
+		if isDecodeError(err) {
+			return nil, huma.Error400BadRequest("画像データが不正です", err)
+		}
 		return nil, huma.Error500InternalServerError("圧縮処理に失敗しました", err)
 	}
 
@@ -92,6 +100,12 @@ func detectFormatFromMIME(mimeType string) (processor.ImageFormat, error) {
 	default:
 		return 0, fmt.Errorf("非対応のMIMEタイプ: %s", mimeType)
 	}
+}
+
+// isDecodeError はデコード関連のエラーかどうかを判定する。
+func isDecodeError(err error) bool {
+	msg := err.Error()
+	return strings.Contains(msg, "decode") || strings.Contains(msg, "unknown format") || strings.Contains(msg, "invalid")
 }
 
 // parseCompressionLevel は文字列からCompressionLevelに変換する。

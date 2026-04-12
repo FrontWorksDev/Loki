@@ -3,11 +3,13 @@ package handler
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"image"
 	"image/color"
 	"image/jpeg"
 	"image/png"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -318,13 +320,53 @@ func TestCompressProcessorNotFound(t *testing.T) {
 
 func TestCompressInvalidImageData(t *testing.T) {
 	api := setupTestAPI(t)
-	// 壊れたJPEGデータを送信して圧縮エラーを発生させる
+	// 壊れたJPEGデータを送信してデコードエラーを発生させる
 	body, ct := buildMultipartRequest(t, nil, "broken.jpg", "image/jpeg", []byte("not a real jpeg"))
 
 	resp := doMultipartRequest(t, api, body, ct)
 
-	if resp.Code != http.StatusInternalServerError {
-		t.Errorf("expected 500, got %d: %s", resp.Code, resp.Body.String())
+	if resp.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d: %s", resp.Code, resp.Body.String())
+	}
+}
+
+// mockProcessor はテスト用のモックプロセッサ。
+type mockProcessor struct {
+	compressErr error
+}
+
+func (m *mockProcessor) Compress(_ context.Context, _ io.Reader, _ io.Writer, _ processor.CompressOptions) (*processor.Result, error) {
+	return nil, m.compressErr
+}
+
+func (m *mockProcessor) Convert(_ context.Context, _ io.Reader, _ io.Writer, _ processor.ConvertOptions) (*processor.Result, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (m *mockProcessor) SupportedFormats() []processor.ImageFormat {
+	return nil
+}
+
+func TestCompressFileTooLarge(t *testing.T) {
+	_, api := humatest.New(t)
+	mock := &mockProcessor{compressErr: processor.ErrFileTooLarge}
+	h := NewCompressHandler(map[processor.ImageFormat]processor.Processor{
+		processor.FormatJPEG: mock,
+	})
+	huma.Register(api, huma.Operation{
+		OperationID:  "compress-image",
+		Method:       http.MethodPost,
+		Path:         "/api/v1/compress",
+		MaxBodyBytes: 50 * 1024 * 1024,
+	}, h.Handle)
+
+	jpegData := createTestJPEG(t, 10, 10, 50)
+	body, ct := buildMultipartRequest(t, nil, "test.jpg", "image/jpeg", jpegData)
+
+	resp := doMultipartRequest(t, api, body, ct)
+
+	if resp.Code != http.StatusRequestEntityTooLarge {
+		t.Errorf("expected 413, got %d: %s", resp.Code, resp.Body.String())
 	}
 }
 
