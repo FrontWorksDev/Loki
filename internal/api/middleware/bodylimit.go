@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
 )
 
@@ -75,10 +74,4 @@ func writePayloadTooLarge(w http.ResponseWriter, maxBytes int64) {
 		"max_bytes": maxBytes,
 	}
 	_ = json.NewEncoder(w).Encode(resp)
-}
-
-// IsMaxBytesError は MaxBytesReader 由来のエラーか判定するヘルパー。
-func IsMaxBytesError(err error) bool {
-	var maxErr *http.MaxBytesError
-	return errors.As(err, &maxErr)
 }

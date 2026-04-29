@@ -146,6 +146,31 @@ func TestInMemoryLimiter_BasicAllowAndDeny(t *testing.T) {
 	}
 }
 
+func TestInMemoryLimiter_RetryAfter(t *testing.T) {
+	rl := NewInMemoryRateLimiter(60, 1)
+	defer rl.(*inMemoryLimiter).Stop()
+
+	// 1個のトークンを消費。
+	if !rl.Allow("ip-A") {
+		t.Fatal("first call should be allowed")
+	}
+	// 2件目はトークンがない状態 → RetryAfter は1秒以上を返す。
+	if got := rl.RetryAfter("ip-A"); got < 1 {
+		t.Errorf("RetryAfter = %d, want >= 1", got)
+	}
+}
+
+func TestInMemoryLimiter_DefaultsForInvalidArgs(t *testing.T) {
+	// 0/負値が渡された場合のフォールバック動作を確認。
+	rl := NewInMemoryRateLimiter(0, 0)
+	defer rl.(*inMemoryLimiter).Stop()
+
+	// burst >= 1 にフォールバックされていれば最初の Allow は true。
+	if !rl.Allow("ip-X") {
+		t.Error("invalid args should fall back to working defaults; first Allow expected to succeed")
+	}
+}
+
 func TestInMemoryLimiter_Cleanup(t *testing.T) {
 	rl := NewInMemoryRateLimiter(60, 1).(*inMemoryLimiter)
 	defer rl.Stop()

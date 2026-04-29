@@ -85,6 +85,18 @@ func startTestServerWithConfig(t *testing.T, customize func(*Config)) (string, *
 	return baseURL, srv
 }
 
+func TestNewLogger(t *testing.T) {
+	tests := []string{"debug", "info", "warn", "error", "unknown"}
+	for _, lvl := range tests {
+		t.Run(lvl, func(t *testing.T) {
+			logger := newLogger(lvl)
+			if logger == nil {
+				t.Errorf("newLogger(%q) returned nil", lvl)
+			}
+		})
+	}
+}
+
 func TestNewServer(t *testing.T) {
 	cfg := DefaultConfig()
 	srv := NewServer(cfg)

@@ -150,3 +150,34 @@ func TestLogging(t *testing.T) {
 		})
 	}
 }
+
+func TestResponseWriterWrapper_Flush(t *testing.T) {
+	rec := httptest.NewRecorder()
+	w := &responseWriterWrapper{ResponseWriter: rec, status: http.StatusOK}
+	w.Flush() // should delegate to the recorder's Flush
+
+	if !rec.Flushed {
+		t.Error("Flush() did not delegate to underlying ResponseWriter")
+	}
+
+	// 非 Flusher な ResponseWriter でも panic しないこと。
+	w2 := &responseWriterWrapper{ResponseWriter: nonFlusherWriter{}}
+	w2.Flush()
+}
+
+type nonFlusherWriter struct{}
+
+func (nonFlusherWriter) Header() http.Header         { return http.Header{} }
+func (nonFlusherWriter) Write(b []byte) (int, error) { return len(b), nil }
+func (nonFlusherWriter) WriteHeader(int)             {}
+
+func TestResponseWriterWrapper_DoubleWriteHeader(t *testing.T) {
+	rec := httptest.NewRecorder()
+	w := &responseWriterWrapper{ResponseWriter: rec, status: http.StatusOK}
+	w.WriteHeader(http.StatusCreated)
+	w.WriteHeader(http.StatusBadRequest) // should be ignored
+
+	if w.status != http.StatusCreated {
+		t.Errorf("status = %d, want 201 (second WriteHeader should be ignored)", w.status)
+	}
+}
