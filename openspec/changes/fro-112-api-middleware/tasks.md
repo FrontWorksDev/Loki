@@ -49,4 +49,4 @@
 - [x] 9.1 `goimports -w ./...` および `go fmt ./...` を実行する
 - [x] 9.2 `golangci-lint run ./...` でlintエラーがないことを確認する
 - [x] 9.3 `go test -race -v ./...` で全テストが通ることを確認する
-- [ ] 9.4 `lefthook install` 済みであることを確認の上、変更をコミットする（コミットメッセージは日本語、Linear FRO-112を含める）
+- [x] 9.4 `lefthook install` 済みであることを確認の上、変更をコミットする（コミットメッセージは日本語、Linear FRO-112を含める）
