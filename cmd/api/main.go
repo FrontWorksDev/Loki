@@ -11,7 +11,12 @@ import (
 )
 
 func main() {
-	cfg := api.DefaultConfig()
+	cfg, err := api.LoadConfig(api.LoadConfigOptions{})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "設定の読み込みに失敗しました: %v\n", err)
+		os.Exit(1)
+	}
+
 	srv := api.NewServer(cfg)
 
 	// シグナルによるGraceful shutdown

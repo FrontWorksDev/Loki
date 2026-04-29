@@ -90,6 +90,52 @@ compress:
 
 **設定の優先順位:** CLI フラグ > 設定ファイル > ビルトインデフォルト
 
+## APIサーバー設定
+
+`cmd/api` を起動すると Huma v2 + Chi v5 ベースのAPIサーバーが立ち上がります。Cloud Run 等の公開環境を想定し、CORS、構造化ロギング、ボディサイズ制限、IPベースレートリミット、ヘルスチェックを標準で備えています。
+
+### 設定値（`configs/default.yaml`）
+
+```yaml
+api:
+  port: 8080
+  cors:
+    allowed_origins: ["*"]
+    allowed_methods: ["GET", "POST", "OPTIONS"]
+    allowed_headers: ["Content-Type", "Authorization"]
+    allow_credentials: false
+    max_age: 300
+  body_limit_bytes: 52428800   # 50 MiB
+  rate_limit:
+    requests_per_minute: 30
+    burst: 10
+  logging:
+    level: "info"              # debug/info/warn/error
+```
+
+### 環境変数による上書き
+
+`LOKI_API_*` プレフィックスでネスト項目をアンダースコア区切りで指定できます。
+
+```bash
+LOKI_API_PORT=8000 \
+LOKI_API_BODY_LIMIT_BYTES=10485760 \
+LOKI_API_RATE_LIMIT_REQUESTS_PER_MINUTE=60 \
+go run ./cmd/api
+```
+
+### ミドルウェアの挙動
+
+| 機能 | 内容 |
+|---|---|
+| CORS | `allowed_origins` に設定したオリジンへ `Access-Control-Allow-*` を付与。プリフライトは2xxを返却 |
+| ロギング | `log/slog` JSONハンドラで標準出力。Cloud Logging 互換のフィールド構造 |
+| ボディサイズ制限 | 上限超過時は 413 + `application/problem+json` |
+| レートリミット | クライアントIP単位（`X-Forwarded-For` 最左 → `RemoteAddr`）で 1分あたり N requests / バースト B。超過時は 429 + `Retry-After` |
+| ヘルスチェック | `GET /api/v1/health` はレートリミット・ボディサイズ制限の対象外 |
+
+本番運用では `allowed_origins` を具体的なドメインに変更してください。インメモリのレートリミットはマルチインスタンス展開では各インスタンスが独立に判定するため、厳密な共有が必要な場合は分散実装に差し替えてください。
+
 ## 開発者向け
 
 ### 前提条件

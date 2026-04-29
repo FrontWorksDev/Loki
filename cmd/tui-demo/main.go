@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/FrontWorksDev/Loki/internal/cli"
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 func main() {
