@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"image"
+
 	// Register decoders for verification.
 	_ "image/jpeg"
 	_ "image/png"
@@ -200,9 +201,9 @@ func TestE2E_ディレクトリ圧縮_サブディレクトリ構造維持(t *te
 	outputDir := filepath.Join(t.TempDir(), "output")
 
 	setupTestDir(t, inputDir, map[string][]byte{
-		"root.jpg":            createTestJPEG(t, 30, 30, 80),
-		"sub1/a.png":          createTestPNG(t, 30, 30),
-		"sub1/sub2/deep.jpg":  createTestJPEG(t, 30, 30, 80),
+		"root.jpg":           createTestJPEG(t, 30, 30, 80),
+		"sub1/a.png":         createTestPNG(t, 30, 30),
+		"sub1/sub2/deep.jpg": createTestJPEG(t, 30, 30, 80),
 	})
 
 	_, err := executeCompress(t, "compress", inputDir, "-r", "-o", outputDir)

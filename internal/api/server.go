@@ -3,46 +3,21 @@ package api
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
-	"time"
+	"os"
 
+	"github.com/FrontWorksDev/Loki/internal/api/middleware"
 	"github.com/FrontWorksDev/Loki/internal/handler"
 	"github.com/FrontWorksDev/Loki/pkg/processor"
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/adapters/humachi"
 	"github.com/go-chi/chi/v5"
+	chimw "github.com/go-chi/chi/v5/middleware"
 )
 
-const (
-	defaultPort              = 8080
-	defaultShutdownTimeout   = 5 * time.Second
-	defaultReadHeaderTimeout = 10 * time.Second
-	defaultReadTimeout       = 30 * time.Second
-	defaultWriteTimeout      = 30 * time.Second
-	defaultIdleTimeout       = 120 * time.Second
-)
-
-// Config はAPIサーバーの設定を保持する。
-type Config struct {
-	Port              int
-	ShutdownTimeout   time.Duration
-	ReadHeaderTimeout time.Duration
-	ReadTimeout       time.Duration
-	WriteTimeout      time.Duration
-	IdleTimeout       time.Duration
-}
-
-// DefaultConfig はデフォルト設定を返す。
-func DefaultConfig() Config {
-	return Config{
-		Port:              defaultPort,
-		ShutdownTimeout:   defaultShutdownTimeout,
-		ReadHeaderTimeout: defaultReadHeaderTimeout,
-		ReadTimeout:       defaultReadTimeout,
-		WriteTimeout:      defaultWriteTimeout,
-		IdleTimeout:       defaultIdleTimeout,
-	}
-}
+// healthPath はレートリミットとボディサイズ制限の対象外とするパス。
+const healthPath = "/api/v1/health"
 
 // Server はAPIサーバーを表す。
 type Server struct {
@@ -50,30 +25,30 @@ type Server struct {
 	router     chi.Router
 	api        huma.API
 	httpServer *http.Server
+	logger     *slog.Logger
 }
 
 // NewServer は新しいAPIサーバーを生成する。
 func NewServer(cfg Config) *Server {
+	logger := newLogger(cfg.Logging.Level)
 	router := chi.NewMux()
+
+	rateLimiter := middleware.NewInMemoryRateLimiter(cfg.RateLimit.RequestsPerMinute, cfg.RateLimit.Burst)
+
+	// ミドルウェア登録順（外側 → 内側）。
+	// Chi の制約により Use はルート登録前にすべて呼ぶ必要があるため、
+	// レートリミット・ボディサイズ制限はミドルウェア側で healthPath を除外する。
+	router.Use(chimw.RequestID)
+	router.Use(chimw.Recoverer)
+	router.Use(middleware.NewLogging(logger))
+	router.Use(middleware.NewCORS(toMiddlewareCORS(cfg.CORS)))
+	router.Use(middleware.NewRateLimit(rateLimiter, middleware.WithExemptPaths(healthPath)))
+	router.Use(middleware.NewBodyLimit(cfg.BodyLimitBytes, middleware.WithBodyLimitExemptPaths(healthPath)))
 
 	humaConfig := huma.DefaultConfig("Loki Image API", "1.0.0")
 	humaConfig.Info.Description = "画像圧縮・変換API"
 
 	api := humachi.New(router, humaConfig)
-
-	s := &Server{
-		config: cfg,
-		router: router,
-		api:    api,
-		httpServer: &http.Server{
-			Addr:              fmt.Sprintf(":%d", cfg.Port),
-			Handler:           router,
-			ReadHeaderTimeout: cfg.ReadHeaderTimeout,
-			ReadTimeout:       cfg.ReadTimeout,
-			WriteTimeout:      cfg.WriteTimeout,
-			IdleTimeout:       cfg.IdleTimeout,
-		},
-	}
 
 	processors := map[processor.ImageFormat]processor.Processor{
 		processor.FormatJPEG: processor.NewJPEGProcessor(),
@@ -83,9 +58,23 @@ func NewServer(cfg Config) *Server {
 	compressHandler := handler.NewCompressHandler(processors)
 	convertHandler := handler.NewConvertHandler(processors)
 
+	RegisterHealth(api)
 	RegisterRoutes(api, compressHandler, convertHandler)
 
-	return s
+	return &Server{
+		config: cfg,
+		router: router,
+		api:    api,
+		logger: logger,
+		httpServer: &http.Server{
+			Addr:              fmt.Sprintf(":%d", cfg.Port),
+			Handler:           router,
+			ReadHeaderTimeout: cfg.ReadHeaderTimeout,
+			ReadTimeout:       cfg.ReadTimeout,
+			WriteTimeout:      cfg.WriteTimeout,
+			IdleTimeout:       cfg.IdleTimeout,
+		},
+	}
 }
 
 // API はHuma APIインスタンスを返す。
@@ -95,7 +84,7 @@ func (s *Server) API() huma.API {
 
 // Start はサーバーを起動する。
 func (s *Server) Start() error {
-	fmt.Printf("Server starting on port %d...\n", s.config.Port)
+	s.logger.Info("server starting", slog.Int("port", s.config.Port))
 	if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		return fmt.Errorf("server error: %w", err)
 	}
@@ -107,4 +96,31 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	shutdownCtx, cancel := context.WithTimeout(ctx, s.config.ShutdownTimeout)
 	defer cancel()
 	return s.httpServer.Shutdown(shutdownCtx)
+}
+
+// newLogger は構造化JSONロガーを生成する。
+func newLogger(level string) *slog.Logger {
+	var lvl slog.Level
+	switch level {
+	case "debug":
+		lvl = slog.LevelDebug
+	case "warn":
+		lvl = slog.LevelWarn
+	case "error":
+		lvl = slog.LevelError
+	default:
+		lvl = slog.LevelInfo
+	}
+	handler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: lvl})
+	return slog.New(handler)
+}
+
+func toMiddlewareCORS(c CORSConfig) middleware.CORSConfig {
+	return middleware.CORSConfig{
+		AllowedOrigins:   c.AllowedOrigins,
+		AllowedMethods:   c.AllowedMethods,
+		AllowedHeaders:   c.AllowedHeaders,
+		AllowCredentials: c.AllowCredentials,
+		MaxAge:           c.MaxAge,
+	}
 }

@@ -4,3 +4,21 @@ compress:
   level: "medium"     # 圧縮レベル (low/medium/high)
   output: ""          # 出力パス (空の場合は自動生成: {name}_compressed.{ext})
   recursive: false    # ディレクトリを再帰的に処理する
+
+# APIサーバー設定
+# 各値は環境変数 LOKI_API_* で上書き可能（ネストはアンダースコア区切り）。
+# 例: LOKI_API_BODY_LIMIT_BYTES, LOKI_API_RATE_LIMIT_REQUESTS_PER_MINUTE
+api:
+  port: 8080
+  cors:
+    allowed_origins: ["*"]
+    allowed_methods: ["GET", "POST", "OPTIONS"]
+    allowed_headers: ["Content-Type", "Authorization"]
+    allow_credentials: false
+    max_age: 300
+  body_limit_bytes: 52428800   # 50 MiB
+  rate_limit:
+    requests_per_minute: 30
+    burst: 10
+  logging:
+    level: "info"              # debug/info/warn/error

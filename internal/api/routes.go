@@ -15,8 +15,10 @@ type HealthOutput struct {
 	}
 }
 
-// RegisterRoutes はAPIルートを登録する。
-func RegisterRoutes(api huma.API, compressHandler *handler.CompressHandler, convertHandler *handler.ConvertHandler) {
+// RegisterHealth はヘルスチェックエンドポイントを登録する。
+// このエンドポイントはレートリミットやボディサイズ制限の影響を受けない位置で
+// 登録されることを想定している（Cloud Runのヘルスチェック互換）。
+func RegisterHealth(api huma.API) {
 	huma.Register(api, huma.Operation{
 		OperationID: "health-check",
 		Summary:     "ヘルスチェック",
@@ -29,7 +31,10 @@ func RegisterRoutes(api huma.API, compressHandler *handler.CompressHandler, conv
 		resp.Body.Status = "ok"
 		return resp, nil
 	})
+}
 
+// RegisterRoutes はAPIルートを登録する。
+func RegisterRoutes(api huma.API, compressHandler *handler.CompressHandler, convertHandler *handler.ConvertHandler) {
 	compressOp := huma.Operation{
 		OperationID:  "compress-image",
 		Summary:      "画像を圧縮する",
