@@ -27,6 +27,11 @@ func WithBodyLimitExemptPaths(paths ...string) BodyLimitOption {
 
 // NewBodyLimit はリクエストボディサイズの上限を強制するミドルウェアを返す。
 // 上限超過時は 413 Payload Too Large をJSONで返す。
+//
+// Content-Length が信頼できる場合は事前判定で 413 を返してハンドラに到達させない。
+// chunked transfer 等で Content-Length が不明な場合は MaxBytesReader が読み取り中に
+// エラーを返すため、下流ハンドラ（典型的には Huma）側でエラー応答に変換される。
+// Loki では各 operation にも `MaxBodyBytes` を宣言しているので二段防御となる。
 func NewBodyLimit(maxBytes int64, opts ...BodyLimitOption) func(http.Handler) http.Handler {
 	cfg := &bodyLimitConfig{maxBytes: maxBytes}
 	for _, opt := range opts {
@@ -46,20 +51,9 @@ func NewBodyLimit(maxBytes int64, opts ...BodyLimitOption) func(http.Handler) ht
 			}
 
 			r.Body = http.MaxBytesReader(w, r.Body, cfg.maxBytes)
-			lw := &limitDetectingWriter{ResponseWriter: w}
-			next.ServeHTTP(lw, r)
-
-			// ハンドラ内で MaxBytesReader が消費中にエラーを起こしていた場合は
-			// すでにレスポンスが書かれている可能性が高いため、ここでは何もしない。
-			_ = lw
+			next.ServeHTTP(w, r)
 		})
 	}
-}
-
-// limitDetectingWriter は将来 MaxBytesError を捕捉する用途のためのフック。
-// 現状はパススルー。
-type limitDetectingWriter struct {
-	http.ResponseWriter
 }
 
 // writePayloadTooLarge は413レスポンスをHuma互換のRFC 7807スタイルJSONで返す。

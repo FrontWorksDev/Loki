@@ -21,11 +21,12 @@ const healthPath = "/api/v1/health"
 
 // Server はAPIサーバーを表す。
 type Server struct {
-	config     Config
-	router     chi.Router
-	api        huma.API
-	httpServer *http.Server
-	logger     *slog.Logger
+	config      Config
+	router      chi.Router
+	api         huma.API
+	httpServer  *http.Server
+	logger      *slog.Logger
+	rateLimiter middleware.RateLimiter
 }
 
 // NewServer は新しいAPIサーバーを生成する。
@@ -62,10 +63,11 @@ func NewServer(cfg Config) *Server {
 	RegisterRoutes(api, compressHandler, convertHandler)
 
 	return &Server{
-		config: cfg,
-		router: router,
-		api:    api,
-		logger: logger,
+		config:      cfg,
+		router:      router,
+		api:         api,
+		logger:      logger,
+		rateLimiter: rateLimiter,
 		httpServer: &http.Server{
 			Addr:              fmt.Sprintf(":%d", cfg.Port),
 			Handler:           router,
@@ -92,10 +94,19 @@ func (s *Server) Start() error {
 }
 
 // Shutdown はサーバーをGracefulに停止する。
+// レートリミッタの内部 goroutine もここで停止する。
 func (s *Server) Shutdown(ctx context.Context) error {
 	shutdownCtx, cancel := context.WithTimeout(ctx, s.config.ShutdownTimeout)
 	defer cancel()
-	return s.httpServer.Shutdown(shutdownCtx)
+	err := s.httpServer.Shutdown(shutdownCtx)
+	if s.rateLimiter != nil {
+		// Close は冪等。エラーは現実装では発生しないが将来の実装に備えて
+		// HTTP 側のエラーを優先しつつログにとどめる。
+		if cerr := s.rateLimiter.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}
+	return err
 }
 
 // newLogger は構造化JSONロガーを生成する。

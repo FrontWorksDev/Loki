@@ -16,8 +16,9 @@ type HealthOutput struct {
 }
 
 // RegisterHealth はヘルスチェックエンドポイントを登録する。
-// このエンドポイントはレートリミットやボディサイズ制限の影響を受けない位置で
-// 登録されることを想定している（Cloud Runのヘルスチェック互換）。
+// このエンドポイントは Cloud Run のヘルスチェック互換を想定しており、
+// レートリミットやボディサイズ制限の影響を受けないようミドルウェア側の
+// exempt path 設定で除外される前提で利用される。
 func RegisterHealth(api huma.API) {
 	huma.Register(api, huma.Operation{
 		OperationID: "health-check",

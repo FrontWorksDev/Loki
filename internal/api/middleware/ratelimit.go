@@ -16,6 +16,9 @@ type RateLimiter interface {
 	Allow(key string) bool
 	// RetryAfter は次に許可される推定時刻までの秒数を返す（0以下なら即時許可可能）。
 	RetryAfter(key string) int
+	// Close は実装が保持する内部リソース（goroutine 等）を解放する。
+	// 冪等であること（複数回呼ばれても安全）。
+	Close() error
 }
 
 // inMemoryLimiter は IP ごとの *rate.Limiter を sync.Map で保持するインメモリ実装。
@@ -73,15 +76,20 @@ func NewInMemoryRateLimiter(requestsPerMinute, burst int) RateLimiter {
 }
 
 func (l *inMemoryLimiter) get(key string) *limiterEntry {
+	now := time.Now()
 	if v, ok := l.limiters.Load(key); ok {
 		entry := v.(*limiterEntry)
-		entry.lastSeen.Set(time.Now())
+		entry.lastSeen.Set(now)
 		return entry
 	}
-	entry := &limiterEntry{limiter: rate.NewLimiter(l.rps, l.burst)}
-	entry.lastSeen.Set(time.Now())
-	actual, _ := l.limiters.LoadOrStore(key, entry)
-	return actual.(*limiterEntry)
+	candidate := &limiterEntry{limiter: rate.NewLimiter(l.rps, l.burst)}
+	candidate.lastSeen.Set(now)
+	actual, _ := l.limiters.LoadOrStore(key, candidate)
+	// 競合で別 goroutine が先にエントリを格納していた場合 actual != candidate となる。
+	// その場合でも アクティブ判定が古くならないよう lastSeen を更新する。
+	actualEntry := actual.(*limiterEntry)
+	actualEntry.lastSeen.Set(now)
+	return actualEntry
 }
 
 // Allow はキーに対するリクエストを許可するかを返す。
@@ -104,6 +112,12 @@ func (l *inMemoryLimiter) RetryAfter(key string) int {
 // Stop はクリーンアップループを停止する（テストや graceful shutdown 用）。
 func (l *inMemoryLimiter) Stop() {
 	l.stopOnce.Do(func() { close(l.stopCh) })
+}
+
+// Close は RateLimiter インタフェースの実装。Stop と同等。
+func (l *inMemoryLimiter) Close() error {
+	l.Stop()
+	return nil
 }
 
 func (l *inMemoryLimiter) cleanupLoop() {

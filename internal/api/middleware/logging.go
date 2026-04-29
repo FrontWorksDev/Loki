@@ -21,13 +21,16 @@ func NewLogging(logger *slog.Logger) func(http.Handler) http.Handler {
 			start := time.Now()
 			ww := &responseWriterWrapper{ResponseWriter: w, status: http.StatusOK}
 
-			next.ServeHTTP(ww, r)
-
-			duration := time.Since(start)
+			// ハンドラが WriteHeader を呼ぶとヘッダーは確定するので、
+			// X-Request-Id は ServeHTTP 前に設定する必要がある。
 			requestID := chimw.GetReqID(r.Context())
 			if requestID != "" {
 				ww.Header().Set("X-Request-Id", requestID)
 			}
+
+			next.ServeHTTP(ww, r)
+
+			duration := time.Since(start)
 
 			attrs := []any{
 				slog.String("method", r.Method),

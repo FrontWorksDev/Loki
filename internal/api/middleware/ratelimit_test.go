@@ -24,6 +24,7 @@ func (f *fakeLimiter) Allow(key string) bool {
 }
 
 func (f *fakeLimiter) RetryAfter(string) int { return 1 }
+func (f *fakeLimiter) Close() error          { return nil }
 
 func TestRateLimit_Behaviors(t *testing.T) {
 	okHandler := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
