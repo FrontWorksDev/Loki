@@ -98,6 +98,7 @@ compress:
 
 ```yaml
 api:
+  host: "0.0.0.0"             # リッスンアドレス。"127.0.0.1" でローカル限定、"::" でIPv6
   port: 8080
   cors:
     allowed_origins: ["*"]
@@ -113,16 +114,41 @@ api:
     level: "info"              # debug/info/warn/error
 ```
 
+| キー | 既定値 | 環境変数 | 用途 |
+|---|---|---|---|
+| `api.host` | `0.0.0.0` | `LOKI_API_HOST` | リッスンアドレス。`127.0.0.1` でループバック限定、`::` で IPv6 デュアルスタック |
+| `api.port` | `8080` | `LOKI_API_PORT` | リッスンポート |
+| `api.body_limit_bytes` | `52428800` (50 MiB) | `LOKI_API_BODY_LIMIT_BYTES` | リクエストボディ上限。超過時は 413 |
+| `api.rate_limit.requests_per_minute` | `30` | `LOKI_API_RATE_LIMIT_REQUESTS_PER_MINUTE` | クライアント IP あたりの 1 分間許容リクエスト数 |
+| `api.rate_limit.burst` | `10` | `LOKI_API_RATE_LIMIT_BURST` | バーストキャパシティ |
+| `api.cors.allowed_origins` | `["*"]` | `LOKI_API_CORS_ALLOWED_ORIGINS` | CORS 許可オリジン |
+| `api.logging.level` | `info` | `LOKI_API_LOGGING_LEVEL` | ログレベル (debug/info/warn/error) |
+
 ### 環境変数による上書き
 
 `LOKI_API_*` プレフィックスでネスト項目をアンダースコア区切りで指定できます。
 
 ```bash
+LOKI_API_HOST=127.0.0.1 \
 LOKI_API_PORT=8000 \
 LOKI_API_BODY_LIMIT_BYTES=10485760 \
 LOKI_API_RATE_LIMIT_REQUESTS_PER_MINUTE=60 \
 go run ./cmd/api
 ```
+
+### OpenAPI スペック・ドキュメント
+
+サーバ起動後、Huma が以下のパスで OpenAPI 関連リソースを自動公開します。
+
+| パス | 内容 |
+|---|---|
+| `/openapi.json` | OpenAPI 3.1 仕様（JSON） |
+| `/openapi.yaml` | OpenAPI 3.1 仕様（YAML） |
+| `/openapi-3.0.json` | OpenAPI 3.0 ダウングレード版（JSON） |
+| `/docs` | Stoplight Elements ベースのインタラクティブ API ドキュメント |
+| `/schemas/*` | コンポーネントスキーマの個別取得 |
+
+`/docs` を開けば、各エンドポイントのリクエスト例 (`example`) や RFC 9457 (`application/problem+json`) 形式の共通エラーレスポンス（400/413/422/429/500）が確認できます。
 
 ### ミドルウェアの挙動
 

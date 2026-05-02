@@ -16,8 +16,8 @@ const maxFileSize = 50 * 1024 * 1024 // 50MB
 // CompressFormData はmultipart/form-dataのフォームデータを表す。
 type CompressFormData struct {
 	File    huma.FormFile `form:"file" contentType:"image/jpeg,image/png,image/webp" required:"true" doc:"圧縮する画像ファイル（JPEG/PNG/WebP）"`
-	Quality int           `form:"quality" minimum:"0" maximum:"100" required:"false" doc:"圧縮品質（1-100）。0または未指定の場合はlevelに基づくデフォルト値を使用"`
-	Level   string        `form:"level" enum:"low,medium,high," required:"false" doc:"圧縮レベル。low=圧縮優先(JPEG:60), medium=バランス(JPEG:75,デフォルト), high=品質優先(JPEG:90)。quality指定時はqualityが優先"`
+	Quality int           `form:"quality" minimum:"0" maximum:"100" required:"false" example:"75" doc:"圧縮品質（1-100）。0または未指定の場合はlevelに基づくデフォルト値を使用"`
+	Level   string        `form:"level" enum:"low,medium,high," required:"false" example:"medium" doc:"圧縮レベル。low=圧縮優先(JPEG:60), medium=バランス(JPEG:75,デフォルト), high=品質優先(JPEG:90)。quality指定時はqualityが優先"`
 }
 
 // CompressInput は圧縮エンドポイントのリクエストを表す。

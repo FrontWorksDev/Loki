@@ -9,6 +9,9 @@ import (
 func TestDefaultConfig_AllFields(t *testing.T) {
 	cfg := DefaultConfig()
 
+	if cfg.Host != "0.0.0.0" {
+		t.Errorf("Host = %q, want 0.0.0.0", cfg.Host)
+	}
 	if cfg.Port != 8080 {
 		t.Errorf("Port = %d, want 8080", cfg.Port)
 	}
@@ -57,6 +60,7 @@ func TestLoadConfig_FromYAML(t *testing.T) {
 	yamlPath := filepath.Join(dir, "default.yaml")
 	yaml := `
 api:
+  host: "127.0.0.1"
   port: 9090
   body_limit_bytes: 1048576
   rate_limit:
@@ -83,6 +87,9 @@ api:
 		t.Fatalf("LoadConfig: %v", err)
 	}
 
+	if cfg.Host != "127.0.0.1" {
+		t.Errorf("Host = %q, want 127.0.0.1", cfg.Host)
+	}
 	if cfg.Port != 9090 {
 		t.Errorf("Port = %d, want 9090", cfg.Port)
 	}
@@ -120,6 +127,7 @@ api:
 		t.Fatal(err)
 	}
 
+	t.Setenv("LOKI_TEST_OVR_API_HOST", "192.168.1.1")
 	t.Setenv("LOKI_TEST_OVR_API_PORT", "7000")
 	t.Setenv("LOKI_TEST_OVR_API_BODY_LIMIT_BYTES", "2048")
 
@@ -131,6 +139,9 @@ api:
 		t.Fatalf("LoadConfig: %v", err)
 	}
 
+	if cfg.Host != "192.168.1.1" {
+		t.Errorf("Host = %q, want 192.168.1.1 (env override)", cfg.Host)
+	}
 	if cfg.Port != 7000 {
 		t.Errorf("Port = %d, want 7000 (env override)", cfg.Port)
 	}

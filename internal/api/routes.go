@@ -19,6 +19,7 @@ type HealthOutput struct {
 // このエンドポイントは Cloud Run のヘルスチェック互換を想定しており、
 // レートリミットやボディサイズ制限の影響を受けないようミドルウェア側の
 // exempt path 設定で除外される前提で利用される。
+// 想定外エラーが発生しない設計のため commonErrorCodes() は適用しない。
 func RegisterHealth(api huma.API) {
 	huma.Register(api, huma.Operation{
 		OperationID: "health-check",
@@ -44,6 +45,7 @@ func RegisterRoutes(api huma.API, compressHandler *handler.CompressHandler, conv
 		Path:         "/api/v1/compress",
 		Tags:         []string{"Image"},
 		MaxBodyBytes: 50 * 1024 * 1024, // 50MB
+		Errors:       commonErrorCodes(),
 		Responses: map[string]*huma.Response{
 			"200": {
 				Description: "圧縮された画像バイナリ",
@@ -70,6 +72,7 @@ func RegisterRoutes(api huma.API, compressHandler *handler.CompressHandler, conv
 		Path:         "/api/v1/convert",
 		Tags:         []string{"Image"},
 		MaxBodyBytes: 50 * 1024 * 1024, // 50MB
+		Errors:       commonErrorCodes(),
 		Responses: map[string]*huma.Response{
 			"200": {
 				Description: "変換された画像バイナリ",
