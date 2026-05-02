@@ -57,7 +57,7 @@
 
 ## 9. コミット・PR
 
-- [ ] 9.1 変更内容を確認し、不要ファイル・デバッグコードがないことを確認
-- [ ] 9.2 日本語コミットメッセージで commit (例: `APIの設定管理とドキュメント整備 (FRO-113)`)
-- [ ] 9.3 lefthook の pre-commit / pre-push が成功することを確認 (skip しない)
-- [ ] 9.4 リモートに push して `gh pr create` で PR を作成 (本文に Linear FRO-113 リンクを含める)
+- [x] 9.1 変更内容を確認し、不要ファイル (.serena/project.yml / testdata/) を除外
+- [x] 9.2 日本語コミットメッセージで commit (`APIの設定管理とドキュメント整備 (FRO-113)`)
+- [x] 9.3 lefthook の pre-commit (fmt/lint) / pre-push (race test) が成功
+- [x] 9.4 リモートに push し `gh pr create` で PR #24 を作成 (https://github.com/FrontWorksDev/Loki/pull/24)

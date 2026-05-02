@@ -7,7 +7,7 @@ FRO-109〜112 で API サーバ・compress/convert エンドポイント・CORS/
 - `api.host` 設定キーを Viper 設定に追加（デフォルト `"0.0.0.0"`、環境変数 `LOKI_API_HOST` で上書き可能）。HTTP サーバの `Addr` を `net.JoinHostPort(host, port)` で構築する形に変更。
 - `configs/default.yaml` に `api.host` を追加。
 - OpenAPI メタ情報を充実: `Info.Description` を API 概要・対応フォーマット・認証ポリシー・レート制限要約を含む複数行に拡張し、`Info.Contact`（FrontWorksDev）と `Info.License`（MIT）を設定。
-- 全画像エンドポイント (compress / convert) に共通エラーレスポンス（400 / 413 / 422 / 429 / 500）を `huma.ErrorModel` ベースで OpenAPI 上に明示。共通ヘルパー関数 `commonErrorResponses()` を新設して再利用する。
+- 全画像エンドポイント (compress / convert) に共通エラーレスポンス（400 / 413 / 422 / 429 / 500）を `huma.ErrorModel` ベースで OpenAPI 上に明示。共通ヘルパー関数 `commonErrorCodes() []int` を新設し、各 `Operation.Errors` に渡すことで Huma が `application/problem+json` レスポンス定義を自動展開する（詳細は design.md D3 参照）。
 - compress / convert の主要入力フィールド（`quality` / `level` / `format`）に Huma の `example` 構造体タグを付与し、OpenAPI スキーマに値の例が出るようにする。
 - README に `api.host` 設定項目と OpenAPI スペック (`/openapi.json` / `/docs`) の参照方法を追記。
 - 設定読み込みテストに host 検証を追加。新規 `internal/api/openapi_test.go` で OpenAPI スペックがメタ情報・エラーレスポンス・example を含むことを検証。
