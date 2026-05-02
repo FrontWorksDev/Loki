@@ -7,8 +7,9 @@ compress:
 
 # APIサーバー設定
 # 各値は環境変数 LOKI_API_* で上書き可能（ネストはアンダースコア区切り）。
-# 例: LOKI_API_BODY_LIMIT_BYTES, LOKI_API_RATE_LIMIT_REQUESTS_PER_MINUTE
+# 例: LOKI_API_HOST, LOKI_API_PORT, LOKI_API_BODY_LIMIT_BYTES, LOKI_API_RATE_LIMIT_REQUESTS_PER_MINUTE
 api:
+  host: "0.0.0.0"             # リッスンアドレス。"127.0.0.1" でローカル限定、"::" でIPv6
   port: 8080
   cors:
     allowed_origins: ["*"]

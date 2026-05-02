@@ -10,6 +10,7 @@ import (
 )
 
 const (
+	defaultHost              = "0.0.0.0"
 	defaultPort              = 8080
 	defaultShutdownTimeout   = 5 * time.Second
 	defaultReadHeaderTimeout = 10 * time.Second
@@ -24,6 +25,7 @@ const (
 
 // Config はAPIサーバーの設定を保持する。
 type Config struct {
+	Host              string
 	Port              int
 	ShutdownTimeout   time.Duration
 	ReadHeaderTimeout time.Duration
@@ -106,6 +108,7 @@ func LoadConfig(opts LoadConfigOptions) (Config, error) {
 		}
 	}
 
+	cfg.Host = v.GetString("api.host")
 	cfg.Port = v.GetInt("api.port")
 	cfg.CORS.AllowedOrigins = v.GetStringSlice("api.cors.allowed_origins")
 	cfg.CORS.AllowedMethods = v.GetStringSlice("api.cors.allowed_methods")
@@ -121,6 +124,7 @@ func LoadConfig(opts LoadConfigOptions) (Config, error) {
 }
 
 func setDefaults(v *viper.Viper, cfg Config) {
+	v.SetDefault("api.host", cfg.Host)
 	v.SetDefault("api.port", cfg.Port)
 	v.SetDefault("api.cors.allowed_origins", cfg.CORS.AllowedOrigins)
 	v.SetDefault("api.cors.allowed_methods", cfg.CORS.AllowedMethods)
@@ -136,6 +140,7 @@ func setDefaults(v *viper.Viper, cfg Config) {
 // DefaultConfig はデフォルト設定を返す。
 func DefaultConfig() Config {
 	return Config{
+		Host:              defaultHost,
 		Port:              defaultPort,
 		ShutdownTimeout:   defaultShutdownTimeout,
 		ReadHeaderTimeout: defaultReadHeaderTimeout,

@@ -13,9 +13,9 @@ import (
 // ConvertFormData はフォーマット変換のmultipart/form-dataを表す。
 type ConvertFormData struct {
 	File    huma.FormFile `form:"file" contentType:"image/jpeg,image/png,image/webp" required:"true" doc:"変換する画像ファイル（JPEG/PNG/WebP）"`
-	Format  string        `form:"format" enum:"jpeg,png,webp" required:"true" doc:"出力フォーマット（jpeg/png/webp）"`
-	Quality int           `form:"quality" minimum:"0" maximum:"100" required:"false" doc:"出力品質（1-100）。0または未指定の場合はlevelに基づくデフォルト値を使用"`
-	Level   string        `form:"level" enum:"low,medium,high," required:"false" doc:"圧縮レベル。low=圧縮優先, medium=バランス(デフォルト), high=品質優先。quality指定時はqualityが優先"`
+	Format  string        `form:"format" enum:"jpeg,png,webp" required:"true" example:"webp" doc:"出力フォーマット（jpeg/png/webp）"`
+	Quality int           `form:"quality" minimum:"0" maximum:"100" required:"false" example:"75" doc:"出力品質（1-100）。0または未指定の場合はlevelに基づくデフォルト値を使用"`
+	Level   string        `form:"level" enum:"low,medium,high," required:"false" example:"medium" doc:"圧縮レベル。low=圧縮優先, medium=バランス(デフォルト), high=品質優先。quality指定時はqualityが優先"`
 }
 
 // ConvertInput はフォーマット変換エンドポイントのリクエストを表す。

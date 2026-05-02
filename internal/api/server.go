@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/FrontWorksDev/Loki/internal/api/middleware"
 	"github.com/FrontWorksDev/Loki/internal/handler"
@@ -18,6 +20,34 @@ import (
 
 // healthPath はレートリミットとボディサイズ制限の対象外とするパス。
 const healthPath = "/api/v1/health"
+
+// apiDescription は OpenAPI スペックの info.description に設定する API 概要。
+const apiDescription = `画像の圧縮・フォーマット変換を提供する HTTP API。
+
+## 機能
+
+- ` + "`POST /api/v1/compress`" + ` — 画像ファイルを圧縮する。
+- ` + "`POST /api/v1/convert`" + ` — 画像のフォーマットを変換する（JPEG / PNG / WebP 相互変換）。
+- ` + "`GET  /api/v1/health`" + ` — サーバー稼働状態を返す。
+
+## 対応フォーマット
+
+JPEG (` + "`image/jpeg`" + `)、PNG (` + "`image/png`" + `)、WebP (` + "`image/webp`" + `)。
+
+## 認証
+
+本 API は認証を要求しない。アクセス制御はネットワーク層 / リバースプロキシ側で行う想定。
+
+## レート制限
+
+クライアント IP ごとに既定で 1 分あたり 30 リクエスト・バースト 10 を許容する。
+超過時は ` + "`429 Too Many Requests`" + ` を返し、` + "`Retry-After`" + ` ヘッダーを付与する。
+ヘルスチェックエンドポイントはレート制限の対象外。
+
+## エラーレスポンス
+
+エラーは RFC 9457 (Problem Details for HTTP APIs) に準拠した
+` + "`application/problem+json`" + ` 形式で返す。`
 
 // Server はAPIサーバーを表す。
 type Server struct {
@@ -47,7 +77,15 @@ func NewServer(cfg Config) *Server {
 	router.Use(middleware.NewBodyLimit(cfg.BodyLimitBytes, middleware.WithBodyLimitExemptPaths(healthPath)))
 
 	humaConfig := huma.DefaultConfig("Loki Image API", "1.0.0")
-	humaConfig.Info.Description = "画像圧縮・変換API"
+	humaConfig.Info.Description = apiDescription
+	humaConfig.Info.Contact = &huma.Contact{
+		Name: "FrontWorksDev",
+		URL:  "https://github.com/FrontWorksDev/Loki",
+	}
+	humaConfig.Info.License = &huma.License{
+		Name: "MIT",
+		URL:  "https://github.com/FrontWorksDev/Loki/blob/main/LICENSE",
+	}
 
 	api := humachi.New(router, humaConfig)
 
@@ -69,7 +107,7 @@ func NewServer(cfg Config) *Server {
 		logger:      logger,
 		rateLimiter: rateLimiter,
 		httpServer: &http.Server{
-			Addr:              fmt.Sprintf(":%d", cfg.Port),
+			Addr:              net.JoinHostPort(cfg.Host, strconv.Itoa(cfg.Port)),
 			Handler:           router,
 			ReadHeaderTimeout: cfg.ReadHeaderTimeout,
 			ReadTimeout:       cfg.ReadTimeout,
@@ -86,7 +124,11 @@ func (s *Server) API() huma.API {
 
 // Start はサーバーを起動する。
 func (s *Server) Start() error {
-	s.logger.Info("server starting", slog.Int("port", s.config.Port))
+	s.logger.Info("server starting",
+		slog.String("host", s.config.Host),
+		slog.Int("port", s.config.Port),
+		slog.String("addr", s.httpServer.Addr),
+	)
 	if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		return fmt.Errorf("server error: %w", err)
 	}
