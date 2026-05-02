@@ -1,34 +1,34 @@
 ## 1. ブランチ作成と前提確認
 
-- [ ] 1.1 `main` から `feature/fro-114-cloud-run-deploy` ブランチを作成 (現状 `feature/fro-113-api-config-and-openapi-docs` にいる場合は先に `git fetch origin && git checkout main && git pull origin main`)
-- [ ] 1.2 `lefthook install` 済みであることを確認 (`ls .git/hooks/pre-commit` で確認)
-- [ ] 1.3 `gcloud --version` および `docker --version` がローカルで利用可能なことを確認
+- [x] 1.1 `main` から `feature/fro-114-cloud-run-deploy` ブランチを作成 (現状 `feature/fro-113-api-config-and-openapi-docs` にいる場合は先に `git fetch origin && git checkout main && git pull origin main`)
+- [x] 1.2 `lefthook install` 済みであることを確認 (`ls .git/hooks/pre-commit` で確認)
+- [ ] 1.3 `gcloud --version` および `docker --version` がローカルで利用可能なことを確認 (Docker は確認済、gcloud は未インストール — Phase 2 開始前にインストールが必要)
 
 ## 2. フェーズ 1: ボディサイズ既定値の変更
 
-- [ ] 2.1 `internal/api/config.go` の定数 `defaultBodyLimitBytes` を `int64(32 * 1024 * 1024)` に変更
-- [ ] 2.2 `configs/default.yaml` の `api.body_limit_bytes` を `33554432` に変更し、コメントに「Cloud Run HTTP/1 上限と整合」の理由を追記
-- [ ] 2.3 `internal/api/config_test.go` の既定値検証テスト (`TestDefaultConfig_AllFields` 等) の期待値を `33554432` に追従更新
-- [ ] 2.4 `internal/api/config_test.go` の YAML / 環境変数読み込みテストで `body_limit_bytes` を扱っているケースの期待値を追従更新
-- [ ] 2.5 `internal/api/middleware/bodylimit_test.go` の境界テスト値を 32 MiB 基準に追従更新 (32 MiB ちょうどは通る、33 MiB は 413)
-- [ ] 2.6 `goimports -w .` および `golangci-lint run ./...` を実行してエラー 0 を確認
-- [ ] 2.7 `go test -race ./internal/api/...` で全 pass を確認
+- [x] 2.1 `internal/api/config.go` の定数 `defaultBodyLimitBytes` を `int64(32 * 1024 * 1024)` に変更
+- [x] 2.2 `configs/default.yaml` の `api.body_limit_bytes` を `33554432` に変更し、コメントに「Cloud Run HTTP/1 上限と整合」の理由を追記
+- [x] 2.3 `internal/api/config_test.go` の既定値検証テスト (`TestDefaultConfig_AllFields` 等) の期待値を `33554432` に追従更新
+- [x] 2.4 `internal/api/config_test.go` の YAML / 環境変数読み込みテストで `body_limit_bytes` を扱っているケースの期待値を追従更新 (override 値を直接指定する形のため実コード変更は不要、`TestLoadConfig_DefaultsWhenFileMissing` は `def.BodyLimitBytes` 参照で自動追従)
+- [x] 2.5 `internal/api/middleware/bodylimit_test.go` の境界テスト値を 32 MiB 基準に追従更新 (現テストはパラメトリックに maxBytes を指定する形で既定値を直接参照していないため変更不要、境界ロジックは `exact_limit_plus_one` ケースで担保済)
+- [x] 2.6 `goimports -w .` および `golangci-lint run ./...` を実行してエラー 0 を確認
+- [x] 2.7 `go test -race ./internal/api/...` で全 pass を確認
 
 ## 3. フェーズ 1: コンテナ化
 
-- [ ] 3.1 リポジトリルートに `Dockerfile` を新規作成 (マルチステージ、`golang:1.25.6-bookworm` ビルド + `gcr.io/distroless/base-debian12:nonroot` ランタイム、BuildKit キャッシュマウント、`CGO_ENABLED=1`、`-trimpath -ldflags="-s -w"`、`configs/default.yaml` 同梱、`USER nonroot:nonroot`、`ENTRYPOINT ["/app/api"]`)
-- [ ] 3.2 リポジトリルートに `.dockerignore` を新規作成 (`build/`, `.git/`, `.github/`, `.serena/`, `.claude/`, `testdata/`, `cmd/img-cli/`, `cmd/tui-demo/`, `internal/cli/`, `internal/platform/`, `docs/`, `README.md`, `LICENSE`, `openspec/`, IDE/OS 関連を除外)
-- [ ] 3.3 リポジトリルートに `docker-compose.yml` を新規作成 (`build` で `Dockerfile` 参照、`8080:8080` ポートマッピング、`LOKI_API_PORT=8080` / `LOKI_API_HOST=0.0.0.0` / `LOKI_API_LOGGING_LEVEL=debug` 環境変数、distroless 制約により `healthcheck.disable: true`)
-- [ ] 3.4 `docker build -t loki-api:local .` が成功することを確認
-- [ ] 3.5 `docker run --rm -d --name loki-test -p 8080:8080 loki-api:local && sleep 2 && curl -fsS http://localhost:8080/api/v1/health && docker stop loki-test` で動作確認
-- [ ] 3.6 `docker compose up -d` および `curl -fsS http://localhost:8080/api/v1/health` で compose 起動確認、`docker compose down` で停止
-- [ ] 3.7 `dd if=/dev/zero of=/tmp/32mb.bin bs=1M count=32` で 32 MiB ファイルを作成し、`curl -X POST -F "file=@/tmp/32mb.bin" http://localhost:8080/api/v1/compress -i` で 4xx 系 (リクエスト形式エラーは可) または 200 が返ることを確認 (413 でないこと)
-- [ ] 3.8 `dd if=/dev/zero of=/tmp/33mb.bin bs=1M count=33` で 33 MiB ファイルを作成し、`curl -X POST -F "file=@/tmp/33mb.bin" http://localhost:8080/api/v1/compress -i` で 413 が返ることを確認
+- [x] 3.1 リポジトリルートに `Dockerfile` を新規作成 (マルチステージ、`golang:1.25.6-bookworm` ビルド + `gcr.io/distroless/base-debian12:nonroot` ランタイム、BuildKit キャッシュマウント、`CGO_ENABLED=1`、`-trimpath -ldflags="-s -w"`、`configs/default.yaml` 同梱、`USER nonroot:nonroot`、`ENTRYPOINT ["/app/api"]`)
+- [x] 3.2 リポジトリルートに `.dockerignore` を新規作成 (`build/`, `.git/`, `.github/`, `.serena/`, `.claude/`, `testdata/`, `cmd/img-cli/`, `cmd/tui-demo/`, `internal/cli/`, `internal/platform/`, `docs/`, `README.md`, `LICENSE`, `openspec/`, IDE/OS 関連を除外)
+- [x] 3.3 リポジトリルートに `docker-compose.yml` を新規作成 (`build` で `Dockerfile` 参照、`8080:8080` ポートマッピング、`LOKI_API_PORT=8080` / `LOKI_API_HOST=0.0.0.0` / `LOKI_API_LOGGING_LEVEL=debug` 環境変数、distroless 制約により `healthcheck.disable: true`)
+- [x] 3.4 `docker build -t loki-api:local .` が成功することを確認 (約10秒、distroless ランタイムでビルド成功)
+- [x] 3.5 `docker run --rm -d --name loki-test -p 8080:8080 loki-api:local && sleep 2 && curl -fsS http://localhost:8080/api/v1/health && docker stop loki-test` で動作確認 (200 OK + `{"status":"ok"}` 返却)
+- [x] 3.6 `docker compose up -d` および `curl -fsS http://localhost:8080/api/v1/health` で compose 起動確認、`docker compose down` で停止 (200 OK 確認)
+- [x] 3.7 31 MiB ファイル (multipart overhead 考慮で 32 MiB ぴったりだと 413 になり境界が曖昧なため 31 MiB を使用) で `POST /api/v1/compress` → HTTP 422 (画像形式エラー、ボディ上限は通過) を確認
+- [x] 3.8 33 MiB ファイルで `POST /api/v1/compress` → HTTP 413 + `{"max_bytes":33554432,"title":"Payload Too Large"}` のエラー応答を確認
 
 ## 4. フェーズ 1: ドキュメントとコミット
 
-- [ ] 4.1 `README.md` に Deployment 章の見出しを追加 (`docs/deployment/` への導線を残す形、詳細はフェーズ 2 で追記)
-- [ ] 4.2 `docker-compose.yml` の使い方 (主にローカル動作確認用、開発は `go run ./cmd/api`) を `README.md` の Development セクションに追記
+- [x] 4.1 `README.md` に Deployment 章の見出しを追加 (`docs/deployment/` への導線を残す形、詳細はフェーズ 2 で追記)
+- [x] 4.2 `docker-compose.yml` の使い方 (主にローカル動作確認用、開発は `go run ./cmd/api`) を `README.md` の Development セクションに追記
 - [ ] 4.3 ここまでの変更を 1 コミット ("APIサーバのコンテナ化とボディ上限の Cloud Run 整合 (FRO-114)" 等) でコミット (lefthook の pre-commit が走り fmt/lint 通過を確認)
 
 ## 5. フェーズ 2: GCP セットアップ手順の文書化

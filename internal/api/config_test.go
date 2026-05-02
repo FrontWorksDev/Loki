@@ -15,8 +15,8 @@ func TestDefaultConfig_AllFields(t *testing.T) {
 	if cfg.Port != 8080 {
 		t.Errorf("Port = %d, want 8080", cfg.Port)
 	}
-	if cfg.BodyLimitBytes != 50*1024*1024 {
-		t.Errorf("BodyLimitBytes = %d, want 50MiB", cfg.BodyLimitBytes)
+	if cfg.BodyLimitBytes != 32*1024*1024 {
+		t.Errorf("BodyLimitBytes = %d, want 32MiB", cfg.BodyLimitBytes)
 	}
 	if cfg.RateLimit.RequestsPerMinute != 30 {
 		t.Errorf("RequestsPerMinute = %d, want 30", cfg.RateLimit.RequestsPerMinute)

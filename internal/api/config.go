@@ -17,7 +17,7 @@ const (
 	defaultReadTimeout       = 30 * time.Second
 	defaultWriteTimeout      = 30 * time.Second
 	defaultIdleTimeout       = 120 * time.Second
-	defaultBodyLimitBytes    = int64(50 * 1024 * 1024) // 50 MiB
+	defaultBodyLimitBytes    = int64(32 * 1024 * 1024) // 32 MiB (Cloud Run HTTP/1 上限と整合)
 	defaultRateRPM           = 30
 	defaultRateBurst         = 10
 	defaultLogLevel          = "info"

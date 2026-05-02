@@ -106,7 +106,7 @@ api:
     allowed_headers: ["Content-Type", "Authorization"]
     allow_credentials: false
     max_age: 300
-  body_limit_bytes: 52428800   # 50 MiB
+  body_limit_bytes: 33554432   # 32 MiB (Cloud Run HTTP/1 上限と整合)
   rate_limit:
     requests_per_minute: 30
     burst: 10
@@ -118,7 +118,7 @@ api:
 |---|---|---|---|
 | `api.host` | `0.0.0.0` | `LOKI_API_HOST` | リッスンアドレス。`127.0.0.1` でループバック限定、`::` で IPv6 デュアルスタック |
 | `api.port` | `8080` | `LOKI_API_PORT` | リッスンポート |
-| `api.body_limit_bytes` | `52428800` (50 MiB) | `LOKI_API_BODY_LIMIT_BYTES` | リクエストボディ上限。超過時は 413 |
+| `api.body_limit_bytes` | `33554432` (32 MiB) | `LOKI_API_BODY_LIMIT_BYTES` | リクエストボディ上限。超過時は 413。既定値は Cloud Run HTTP/1 上限 (32 MiB) と整合 |
 | `api.rate_limit.requests_per_minute` | `30` | `LOKI_API_RATE_LIMIT_REQUESTS_PER_MINUTE` | クライアント IP あたりの 1 分間許容リクエスト数 |
 | `api.rate_limit.burst` | `10` | `LOKI_API_RATE_LIMIT_BURST` | バーストキャパシティ |
 | `api.cors.allowed_origins` | `["*"]` | `LOKI_API_CORS_ALLOWED_ORIGINS` | CORS 許可オリジン |
@@ -206,6 +206,20 @@ go fmt ./...
 goimports -w ./...
 ```
 
+### API サーバの起動
+
+```bash
+# 開発時の主な起動方法 (IDE デバッガ統合容易)
+go run ./cmd/api
+
+# 本番イメージとほぼ同等の環境で起動 (Cloud Run と同じ Dockerfile を使用)
+docker compose up -d
+curl http://localhost:8080/api/v1/health
+docker compose down
+```
+
+`docker-compose.yml` は本番デプロイ前の動作確認専用です。ホットリロードは入れていないため、コード編集時は `go run ./cmd/api` を使ってください。
+
 ### プロジェクト構造
 
 ```
@@ -221,6 +235,15 @@ Loki/
 ├── configs/               # デフォルト設定ファイル
 └── .github/workflows/     # CI/CD（テスト・ビルド）
 ```
+
+## デプロイ
+
+API サーバは Google Cloud Run へのデプロイを前提に整備しています。`Dockerfile` (マルチステージ・distroless ベース・CGO 対応) と `.github/workflows/deploy.yml` (Workload Identity Federation 認証 → 自動デプロイ) を用意。
+
+詳細手順は以下を参照してください。
+
+- [`docs/deployment/gcp-setup.md`](docs/deployment/gcp-setup.md): GCP プロジェクト初回セットアップ (Artifact Registry / Service Account / Workload Identity Federation / GitHub Secrets)。コピペ実行可能な `gcloud` コマンド集。
+- [`docs/deployment/cloud-run.md`](docs/deployment/cloud-run.md): Cloud Run サービス構成、初回手動デプロイ、ロールバック手順、ログ閲覧、コスト保護の運用ドキュメント。
 
 ## ライセンス
 
