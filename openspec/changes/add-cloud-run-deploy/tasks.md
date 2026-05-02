@@ -29,14 +29,14 @@
 
 - [x] 4.1 `README.md` に Deployment 章の見出しを追加 (`docs/deployment/` への導線を残す形、詳細はフェーズ 2 で追記)
 - [x] 4.2 `docker-compose.yml` の使い方 (主にローカル動作確認用、開発は `go run ./cmd/api`) を `README.md` の Development セクションに追記
-- [ ] 4.3 ここまでの変更を 1 コミット ("APIサーバのコンテナ化とボディ上限の Cloud Run 整合 (FRO-114)" 等) でコミット (lefthook の pre-commit が走り fmt/lint 通過を確認)
+- [x] 4.3 ここまでの変更を 1 コミット ("APIサーバのコンテナ化とボディ上限の Cloud Run 整合 (FRO-114)" 等) でコミット (lefthook の pre-commit が走り fmt/lint 通過を確認) (commit `e2703bf`)
 
 ## 5. フェーズ 2: GCP セットアップ手順の文書化
 
-- [ ] 5.1 `docs/deployment/` ディレクトリを新規作成
-- [ ] 5.2 `docs/deployment/gcp-setup.md` を新規作成し、以下を含める: 前提変数 (`GCP_PROJECT_ID` 等)、API 有効化 (`run.googleapis.com`, `artifactregistry.googleapis.com`, `iamcredentials.googleapis.com`, `sts.googleapis.com`)、Artifact Registry 作成、Service Account 作成と IAM ロール付与 (`roles/run.admin`, `roles/artifactregistry.writer`, `roles/iam.serviceAccountUser`)、Workload Identity Pool/Provider 作成 (`attribute-condition` でリポジトリ限定)、`add-iam-policy-binding` で `principalSet` 経由の二重防御、GitHub Secrets 登録手順 (`gh secret set` コマンド例)
-- [ ] 5.3 `docs/deployment/cloud-run.md` を新規作成し、以下を含める: サービス構成 (リージョン / インスタンス / リソース / タイムアウト / concurrency / 公開設定 / 環境変数)、初回手動デプロイコマンド、ロールバック手順 (`gcloud run services update-traffic --to-revisions=<PREV>=100`)、リビジョン一覧取得、ログ閲覧 (`gcloud logging tail` / `gcloud logging read`)、コスト保護 (請求アラート設定手順)
-- [ ] 5.4 `README.md` の Deployment 章に `docs/deployment/gcp-setup.md` と `docs/deployment/cloud-run.md` への導線を整備
+- [x] 5.1 `docs/deployment/` ディレクトリを新規作成
+- [x] 5.2 `docs/deployment/gcp-setup.md` を新規作成し、以下を含める: 前提変数 (`GCP_PROJECT_ID` 等)、API 有効化 (`run.googleapis.com`, `artifactregistry.googleapis.com`, `iamcredentials.googleapis.com`, `sts.googleapis.com`)、Artifact Registry 作成、Service Account 作成と IAM ロール付与 (`roles/run.admin`, `roles/artifactregistry.writer`, `roles/iam.serviceAccountUser`)、Workload Identity Pool/Provider 作成 (`attribute-condition` でリポジトリ限定)、`add-iam-policy-binding` で `principalSet` 経由の二重防御、GitHub Secrets 登録手順 (`gh secret set` コマンド例)
+- [x] 5.3 `docs/deployment/cloud-run.md` を新規作成し、以下を含める: サービス構成 (リージョン / インスタンス / リソース / タイムアウト / concurrency / 公開設定 / 環境変数)、初回手動デプロイコマンド、ロールバック手順 (`gcloud run services update-traffic --to-revisions=<PREV>=100`)、リビジョン一覧取得、ログ閲覧 (`gcloud logging tail` / `gcloud logging read`)、コスト保護 (請求アラート設定手順)
+- [x] 5.4 `README.md` の Deployment 章に `docs/deployment/gcp-setup.md` と `docs/deployment/cloud-run.md` への導線を整備 (Phase 1 で先行追加済み)
 
 ## 6. フェーズ 2: GCP 初回セットアップ実施 (リポジトリ外作業)
 
@@ -52,8 +52,8 @@
 
 ## 7. フェーズ 3: GitHub Actions ワークフロー追加
 
-- [ ] 7.1 `.github/workflows/deploy.yml` を新規作成 (`on: push: branches: [main]` + `workflow_dispatch`、`concurrency: deploy-cloud-run`、`permissions: id-token: write contents: read`、`google-github-actions/auth@v2` で WIF 認証、`google-github-actions/setup-gcloud@v2`、`gcloud auth configure-docker`、`docker build/push` で `:${{ github.sha }}` と `:latest` の二系統タグ、`gcloud run deploy` フルオプション、CORS 環境変数は `--set-env-vars=^@@^LOKI_API_CORS_ALLOWED_ORIGINS=...` セパレータ構文で渡す)
-- [ ] 7.2 ローカルで `gh workflow view deploy.yml` (push 後) または `actionlint` 等でワークフローの構文確認
+- [x] 7.1 `.github/workflows/deploy.yml` を新規作成 (`on: push: branches: [main]` + `workflow_dispatch`、`concurrency: deploy-cloud-run`、`permissions: id-token: write contents: read`、`google-github-actions/auth@v2` で WIF 認証、`google-github-actions/setup-gcloud@v2`、`gcloud auth configure-docker`、`docker build/push` で `:${{ github.sha }}` と `:latest` の二系統タグ、`gcloud run deploy` フルオプション、CORS 環境変数は `--set-env-vars=^@@^LOKI_API_CORS_ALLOWED_ORIGINS=...` セパレータ構文で渡す。LOKI_CORS_ORIGINS は `env:` 経由で受けてシェルインジェクション耐性を確保)
+- [x] 7.2 ローカルで `gh workflow view deploy.yml` (push 後) または `actionlint` 等でワークフローの構文確認 (Ruby YAML.load_file で構文 OK)
 - [ ] 7.3 ここまでの変更 (`docs/deployment/*`, `.github/workflows/deploy.yml`, README 更新) を 1 コミットでコミット ("Cloud Run デプロイワークフローと運用ドキュメント追加 (FRO-114)" 等)
 - [ ] 7.4 リモートに push し、GitHub Actions の `Deploy to Cloud Run` ワークフローが他のワークフロー (test/build) と競合せず一覧に出ることを確認
 
