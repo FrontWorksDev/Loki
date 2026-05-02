@@ -54,7 +54,7 @@
 
 - [x] 7.1 `.github/workflows/deploy.yml` を新規作成 (`on: push: branches: [main]` + `workflow_dispatch`、`concurrency: deploy-cloud-run`、`permissions: id-token: write contents: read`、`google-github-actions/auth@v2` で WIF 認証、`google-github-actions/setup-gcloud@v2`、`gcloud auth configure-docker`、`docker build/push` で `:${{ github.sha }}` と `:latest` の二系統タグ、`gcloud run deploy` フルオプション、CORS 環境変数は `--set-env-vars=^@@^LOKI_API_CORS_ALLOWED_ORIGINS=...` セパレータ構文で渡す。LOKI_CORS_ORIGINS は `env:` 経由で受けてシェルインジェクション耐性を確保)
 - [x] 7.2 ローカルで `gh workflow view deploy.yml` (push 後) または `actionlint` 等でワークフローの構文確認 (Ruby YAML.load_file で構文 OK)
-- [ ] 7.3 ここまでの変更 (`docs/deployment/*`, `.github/workflows/deploy.yml`, README 更新) を 1 コミットでコミット ("Cloud Run デプロイワークフローと運用ドキュメント追加 (FRO-114)" 等)
+- [x] 7.3 ここまでの変更 (`docs/deployment/*`, `.github/workflows/deploy.yml`, README 更新) を 1 コミットでコミット ("Cloud Run デプロイワークフローと運用ドキュメント追加 (FRO-114)" 等) (commit `8bb9e42`)
 - [ ] 7.4 リモートに push し、GitHub Actions の `Deploy to Cloud Run` ワークフローが他のワークフロー (test/build) と競合せず一覧に出ることを確認
 
 ## 8. フェーズ 3: CI 経由デプロイの動作確認
@@ -74,11 +74,11 @@
 
 ## 10. 最終検証とコミット・PR
 
-- [ ] 10.1 `golangci-lint run ./...` でエラー 0 を確認
-- [ ] 10.2 `go test -race ./...` で全 pass を確認
-- [ ] 10.3 `go build ./...` で全パッケージビルド成功を確認
-- [ ] 10.4 `openspec validate add-cloud-run-deploy --strict` (もし利用可能なら) で OpenSpec 整合性を確認
-- [ ] 10.5 不要な変更ファイル (`.serena/project.yml`, `coverage.out` 等) が含まれていないか `git status` で確認
+- [x] 10.1 `golangci-lint run ./...` でエラー 0 を確認
+- [x] 10.2 `go test -race ./...` で全 pass を確認 (CGO 由来の macOS リンカ警告は既知の表示で実害なし)
+- [x] 10.3 `go build ./...` で全パッケージビルド成功を確認
+- [x] 10.4 `openspec validate add-cloud-run-deploy --strict` (もし利用可能なら) で OpenSpec 整合性を確認
+- [x] 10.5 不要な変更ファイル (`.serena/project.yml`, `coverage.out` 等) が含まれていないか `git status` で確認 (`.serena/project.yml` は自動生成ファイルとして 10.6 のコミットに含める方針)
 - [ ] 10.6 (リハーサル等で追加コミットがある場合) 残りの変更を日本語メッセージでコミット
 - [ ] 10.7 リモートに push し、`gh pr create` で PR を作成 (タイトル例: "Cloud Run デプロイ整備 (FRO-114)"、本文に `docs/deployment/gcp-setup.md` の前提条件・GitHub Secrets 設定が完了済みであることを明記)
 - [ ] 10.8 PR の Actions ジョブ (test, build, deploy) がすべて緑であることを確認
