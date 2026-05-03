@@ -2,7 +2,7 @@
 
 - [x] 1.1 `main` から `feature/fro-114-cloud-run-deploy` ブランチを作成 (現状 `feature/fro-113-api-config-and-openapi-docs` にいる場合は先に `git fetch origin && git checkout main && git pull origin main`)
 - [x] 1.2 `lefthook install` 済みであることを確認 (`ls .git/hooks/pre-commit` で確認)
-- [ ] 1.3 `gcloud --version` および `docker --version` がローカルで利用可能なことを確認 (Docker は確認済、gcloud は未インストール — Phase 2 開始前にインストールが必要)
+- [x] 1.3 `gcloud --version` および `docker --version` がローカルで利用可能なことを確認 (Docker 29.4.1 / gcloud 566.0.0 確認済)
 
 ## 2. フェーズ 1: ボディサイズ既定値の変更
 
@@ -40,8 +40,8 @@
 
 ## 6. フェーズ 2: GCP 初回セットアップ実施 (リポジトリ外作業)
 
-- [ ] 6.1 `docs/deployment/gcp-setup.md` 記載の手順を上から順に実行 (API 有効化、Artifact Registry、Service Account、WIF Pool/Provider、IAM 付与)
-- [ ] 6.2 GitHub Secrets に `GCP_PROJECT_ID`, `GCP_WIF_PROVIDER`, `GCP_DEPLOY_SA`, `LOKI_CORS_ORIGINS` を登録 (`LOKI_CORS_ORIGINS=https://tool.frontworks.dev,http://localhost:4321`)
+- [x] 6.1 `docs/deployment/gcp-setup.md` 記載の手順を上から順に実行 (API 有効化、Artifact Registry、Service Account、WIF Pool/Provider、IAM 付与) (ユーザ手動実行済)
+- [x] 6.2 GitHub Secrets に `GCP_PROJECT_ID`, `GCP_WIF_PROVIDER`, `GCP_DEPLOY_SA`, `LOKI_CORS_ORIGINS` を登録 (`LOKI_CORS_ORIGINS=https://tool.frontworks.dev,http://localhost:4321`) (ユーザ手動実行済)
 - [ ] 6.3 ローカルから `gcloud auth configure-docker asia-northeast1-docker.pkg.dev` を実行
 - [ ] 6.4 ローカルから手動でイメージをビルド・push し (`docker build -t asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/loki/api:bootstrap . && docker push ...`)、`gcloud run deploy loki-api ...` (フルオプション) で初回デプロイを実行
 - [ ] 6.5 `gcloud run services describe loki-api --region=asia-northeast1 --format='value(status.url)'` でサービス URL を取得し、`curl ${URL}/api/v1/health` が 200 を返すことを確認
@@ -79,7 +79,7 @@
 - [x] 10.3 `go build ./...` で全パッケージビルド成功を確認
 - [x] 10.4 `openspec validate add-cloud-run-deploy --strict` (もし利用可能なら) で OpenSpec 整合性を確認
 - [x] 10.5 不要な変更ファイル (`.serena/project.yml`, `coverage.out` 等) が含まれていないか `git status` で確認 (`.serena/project.yml` は自動生成ファイルとして 10.6 のコミットに含める方針)
-- [ ] 10.6 (リハーサル等で追加コミットがある場合) 残りの変更を日本語メッセージでコミット
+- [x] 10.6 (リハーサル等で追加コミットがある場合) 残りの変更を日本語メッセージでコミット (commit `e6e3c22`)
 - [ ] 10.7 リモートに push し、`gh pr create` で PR を作成 (タイトル例: "Cloud Run デプロイ整備 (FRO-114)"、本文に `docs/deployment/gcp-setup.md` の前提条件・GitHub Secrets 設定が完了済みであることを明記)
 - [ ] 10.8 PR の Actions ジョブ (test, build, deploy) がすべて緑であることを確認
 

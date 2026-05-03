@@ -46,8 +46,12 @@ export SERVICE="loki-api"
 gcloud auth configure-docker "${GCP_REGION}-docker.pkg.dev"
 
 # 2. ビルド & push
+# ⚠️ Apple Silicon Mac でビルドする場合は --platform linux/amd64 必須。
+#    付けないと OCI image index 形式でマルチプラットフォームイメージが作られ、
+#    Cloud Run が `Container manifest type ... must support amd64/linux` で拒否する。
+#    QEMU エミュレーション経由で 1〜3 分かかる (Intel Mac / Linux ネイティブなら 10 秒)。
 IMAGE_URI="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPO}/api:bootstrap"
-docker build -t "$IMAGE_URI" .
+docker build --platform linux/amd64 -t "$IMAGE_URI" .
 docker push "$IMAGE_URI"
 
 # 3. Cloud Run へデプロイ
@@ -175,6 +179,7 @@ gcloud billing budgets list --billing-account=<ACCOUNT_ID> 2>&1 | head
 
 | 症状 | 原因の見立て | 対処 |
 |---|---|---|
+| `gcloud run deploy` で `Container manifest type 'application/vnd.oci.image.index.v1+json' must support amd64/linux` | Apple Silicon Mac でビルドした OCI image index が arm64 のみ含む / Cloud Run は amd64 のみサポート | `docker build --platform linux/amd64 -t ... .` で再ビルド・push して再デプロイ。GitHub Actions (ubuntu-latest = amd64 ネイティブ) では発生しない |
 | デプロイ後に 503 | コンテナ起動失敗 (PORT 不整合 / クラッシュ) | `gcloud run revisions describe <REV>` でログ確認、`/api/v1/health` を直接叩く |
 | 502 が散発 | OOM (画像サイズ × 並列数がメモリを超過) | `--memory=1Gi` に上げる、または `--concurrency=5` に下げる |
 | CORS エラー (ブラウザ) | `LOKI_API_CORS_ALLOWED_ORIGINS` がドメイン不一致 | `gcloud run services update --update-env-vars=^@@^...` で即時修正 |

@@ -150,8 +150,9 @@ CI に乗せる前にローカルから 1 回デプロイし、後述の URL か
 gcloud auth configure-docker "${GCP_REGION}-docker.pkg.dev"
 
 # ビルド & push
+# ⚠️ Apple Silicon Mac の場合は --platform linux/amd64 必須 (Cloud Run は amd64 のみ)
 IMAGE_URI="${GCP_REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/${AR_REPO}/api:bootstrap"
-docker build -t "$IMAGE_URI" .
+docker build --platform linux/amd64 -t "$IMAGE_URI" .
 docker push "$IMAGE_URI"
 
 # Cloud Run へデプロイ (本番と同じオプション)
@@ -186,3 +187,4 @@ curl "${SERVICE_URL}/api/v1/health"
 | GitHub Actions の `auth` ステップで `Permission 'iam.serviceAccounts.getAccessToken' denied` | `roles/iam.workloadIdentityUser` の `principalSet` がリポジトリと不一致 | 4.3 の `add-iam-policy-binding` を再確認 (`${GITHUB_OWNER}/${GITHUB_REPO}` が正しいか) |
 | `gcloud run deploy` で `User does not have permission` | `roles/run.admin` または `roles/iam.serviceAccountUser` 未付与 | 3 のロール付与を再確認 |
 | `docker push` で `denied: Permission` | `roles/artifactregistry.writer` 未付与、または `gcloud auth configure-docker` 未実行 | 6 のコマンド再実行 |
+| `gcloud run deploy` で `Container manifest type ... must support amd64/linux` | Apple Silicon Mac でビルドしたマルチプラットフォーム OCI image index に amd64 が含まれない | `docker build --platform linux/amd64 -t ... .` で再ビルド・push (詳細: [`cloud-run.md`](cloud-run.md#トラブルシュート)) |
