@@ -1,7 +1,9 @@
 # deployment-cloud-run Specification
 
 ## Purpose
-TBD - created by archiving change add-cloud-run-deploy. Update Purpose after archive.
+
+Cloud Run へのコンテナデプロイ全体に関する仕様を集約する。コンテナイメージの構成要件 (マルチステージビルド、非 root 実行、CGO ランタイム依存)、Cloud Run サービス設定要件 (PORT 注入、リソース割当、min/max インスタンス、タイムアウト、公開ポリシー、CORS 環境変数注入)、CI/CD パイプライン要件 (Workload Identity Federation 認証、イメージタグ戦略、`concurrency` 制御)、ロールバック手順、三層コスト保護 (Cloud Run 上限 + アプリ側レートリミット + GCP 請求アラート) を含む。
+
 ## Requirements
 ### Requirement: マルチステージ Docker イメージのビルド
 
