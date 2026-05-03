@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+API サーバが Huma v2 経由で自動公開する OpenAPI スペックの品質要件 (Info メタ情報、共通エラーレスポンス、リクエスト/レスポンス例) を、エンドポイント個別ではなく横断的に定義する。
+
+## Requirements
 
 ### Requirement: OpenAPI Info メタ情報の設定
 

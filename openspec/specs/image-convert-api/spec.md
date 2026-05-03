@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+画像フォーマット変換エンドポイント `POST /api/v1/convert` の挙動 (受付形式、変換先フォーマット指定、対応フォーマット間の相互変換、エラーハンドリング) を定義する。
+
+## Requirements
 
 ### Requirement: フォーマット変換エンドポイント
 システムは `POST /api/v1/convert` エンドポイントを提供しなければならない（SHALL）。リクエストは `multipart/form-data` 形式で、変換された画像をバイナリレスポンスとして返す。
