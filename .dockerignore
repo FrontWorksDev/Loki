@@ -1,0 +1,40 @@
+# Build artifacts
+build/
+*.out
+coverage.out
+
+# Test fixtures
+testdata/
+
+# Dev tooling / VCS
+.git/
+.github/
+.serena/
+.claude/
+.full-review/
+.codecov.yml
+.tool-versions
+lefthook.yml
+
+# IDE / OS
+.DS_Store
+.nvimlog
+.vscode/
+.idea/
+
+# Docs (本番イメージには不要)
+docs/
+README.md
+LICENSE
+openspec/
+
+# CLI / TUI (API イメージには不要)
+cmd/img-cli/
+cmd/tui-demo/
+internal/cli/
+internal/platform/
+
+# Compose / Docker関連
+docker-compose.yml
+Dockerfile
+.dockerignore

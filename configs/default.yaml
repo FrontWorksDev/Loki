@@ -17,7 +17,7 @@ api:
     allowed_headers: ["Content-Type", "Authorization"]
     allow_credentials: false
     max_age: 300
-  body_limit_bytes: 52428800   # 50 MiB
+  body_limit_bytes: 33554432   # 32 MiB (Cloud Run HTTP/1 上限と整合させ、ローカルとデプロイで挙動差が出ないようにする)
   rate_limit:
     requests_per_minute: 30
     burst: 10

@@ -1,0 +1,17 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      LOKI_API_PORT: "8080"
+      LOKI_API_HOST: "0.0.0.0"
+      LOKI_API_LOGGING_LEVEL: "debug"
+    # distroless ランタイムには wget/curl/sh が含まれないため、
+    # Docker 側 healthcheck は無効化する。動作確認は手動で
+    # `curl http://localhost:8080/api/v1/health` を実行する想定。
+    # Cloud Run 側の startup/liveness probe とは独立。
+    healthcheck:
+      disable: true

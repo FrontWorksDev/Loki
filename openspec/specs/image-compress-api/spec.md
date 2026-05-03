@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+画像圧縮エンドポイント `POST /api/v1/compress` の挙動 (受付形式、品質・レベルパラメータ、対応フォーマット、エラーハンドリング) を定義する。
+
+## Requirements
 
 ### Requirement: 画像圧縮エンドポイントの提供
 システムは `POST /api/v1/compress` エンドポイントを提供し、multipart/form-data 形式で画像ファイルを受け取り、圧縮された画像バイナリをレスポンスとして返さなければならない（SHALL）。
