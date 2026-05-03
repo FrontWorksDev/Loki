@@ -150,6 +150,69 @@ api:
 	}
 }
 
+func TestLoadConfig_EnvOverridesStringSliceCSV(t *testing.T) {
+	// Viper の GetStringSlice は環境変数から読んだカンマ区切り値を自動分割しないため、
+	// LoadConfig 側で再分割する仕様。本テストはその挙動を担保する。
+	t.Setenv("LOKI_TEST_CSV_API_CORS_ALLOWED_ORIGINS", "https://tool.frontworks.dev,http://localhost:4321")
+	t.Setenv("LOKI_TEST_CSV_API_CORS_ALLOWED_METHODS", "GET, POST, OPTIONS")
+	t.Setenv("LOKI_TEST_CSV_API_CORS_ALLOWED_HEADERS", "Content-Type,Authorization,X-Custom-Header")
+
+	cfg, err := LoadConfig(LoadConfigOptions{
+		ConfigName:  "nonexistent",
+		ConfigPaths: []string{t.TempDir()},
+		EnvPrefix:   "LOKI_TEST_CSV",
+	})
+	if err != nil {
+		t.Fatalf("LoadConfig: %v", err)
+	}
+
+	wantOrigins := []string{"https://tool.frontworks.dev", "http://localhost:4321"}
+	if !equalSlice(cfg.CORS.AllowedOrigins, wantOrigins) {
+		t.Errorf("CORS.AllowedOrigins = %v, want %v", cfg.CORS.AllowedOrigins, wantOrigins)
+	}
+
+	wantMethods := []string{"GET", "POST", "OPTIONS"}
+	if !equalSlice(cfg.CORS.AllowedMethods, wantMethods) {
+		t.Errorf("CORS.AllowedMethods = %v, want %v (空白トリム込み)", cfg.CORS.AllowedMethods, wantMethods)
+	}
+
+	wantHeaders := []string{"Content-Type", "Authorization", "X-Custom-Header"}
+	if !equalSlice(cfg.CORS.AllowedHeaders, wantHeaders) {
+		t.Errorf("CORS.AllowedHeaders = %v, want %v", cfg.CORS.AllowedHeaders, wantHeaders)
+	}
+}
+
+func TestLoadConfig_EnvOverridesSingleValueSlice(t *testing.T) {
+	// カンマを含まない単一値の場合は分割せずそのまま 1 要素のスライスとして扱う。
+	t.Setenv("LOKI_TEST_SINGLE_API_CORS_ALLOWED_ORIGINS", "*")
+
+	cfg, err := LoadConfig(LoadConfigOptions{
+		ConfigName:  "nonexistent",
+		ConfigPaths: []string{t.TempDir()},
+		EnvPrefix:   "LOKI_TEST_SINGLE",
+	})
+	if err != nil {
+		t.Fatalf("LoadConfig: %v", err)
+	}
+
+	want := []string{"*"}
+	if !equalSlice(cfg.CORS.AllowedOrigins, want) {
+		t.Errorf("CORS.AllowedOrigins = %v, want %v", cfg.CORS.AllowedOrigins, want)
+	}
+}
+
+func equalSlice(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
 func TestLoadConfig_MalformedYAML(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "default.yaml"), []byte("api: : invalid"), 0o600); err != nil {

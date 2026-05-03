@@ -110,9 +110,9 @@ func LoadConfig(opts LoadConfigOptions) (Config, error) {
 
 	cfg.Host = v.GetString("api.host")
 	cfg.Port = v.GetInt("api.port")
-	cfg.CORS.AllowedOrigins = v.GetStringSlice("api.cors.allowed_origins")
-	cfg.CORS.AllowedMethods = v.GetStringSlice("api.cors.allowed_methods")
-	cfg.CORS.AllowedHeaders = v.GetStringSlice("api.cors.allowed_headers")
+	cfg.CORS.AllowedOrigins = getStringSliceCSV(v, "api.cors.allowed_origins")
+	cfg.CORS.AllowedMethods = getStringSliceCSV(v, "api.cors.allowed_methods")
+	cfg.CORS.AllowedHeaders = getStringSliceCSV(v, "api.cors.allowed_headers")
 	cfg.CORS.AllowCredentials = v.GetBool("api.cors.allow_credentials")
 	cfg.CORS.MaxAge = v.GetInt("api.cors.max_age")
 	cfg.BodyLimitBytes = v.GetInt64("api.body_limit_bytes")
@@ -121,6 +121,29 @@ func LoadConfig(opts LoadConfigOptions) (Config, error) {
 	cfg.Logging.Level = v.GetString("api.logging.level")
 
 	return cfg, nil
+}
+
+// getStringSliceCSV は v.GetStringSlice が返したスライスの各要素を改めてカンマで分割し、
+// 空白を trim して空要素を除去する。
+//
+// 背景: Viper / spf13/cast の挙動により、環境変数からのスライス読み込みが期待通りに動かない:
+//   - `LOKI_API_CORS_ALLOWED_ORIGINS=a,b,c` (空白なし) → `["a,b,c"]` (1 要素)
+//   - `LOKI_API_CORS_ALLOWED_METHODS=GET, POST, OPTIONS` (空白あり) → `["GET,", "POST,", "OPTIONS"]`
+//     (cast.ToStringSlice が `strings.Fields` で空白分割するためコンマがそのまま残る)
+//
+// 本ヘルパーで両方のケースをカバーし、最終的に `["a", "b", "c"]` 形式に正規化する。
+// YAML 由来の元々分割済みスライス (`["a", "b", "c"]`) はそのまま返る (各要素にコンマがないため)。
+func getStringSliceCSV(v *viper.Viper, key string) []string {
+	raw := v.GetStringSlice(key)
+	result := make([]string, 0, len(raw))
+	for _, item := range raw {
+		for part := range strings.SplitSeq(item, ",") {
+			if trimmed := strings.TrimSpace(part); trimmed != "" {
+				result = append(result, trimmed)
+			}
+		}
+	}
+	return result
 }
 
 func setDefaults(v *viper.Viper, cfg Config) {

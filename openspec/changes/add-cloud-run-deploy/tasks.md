@@ -42,9 +42,9 @@
 
 - [x] 6.1 `docs/deployment/gcp-setup.md` 記載の手順を上から順に実行 (API 有効化、Artifact Registry、Service Account、WIF Pool/Provider、IAM 付与) (ユーザ手動実行済)
 - [x] 6.2 GitHub Secrets に `GCP_PROJECT_ID`, `GCP_WIF_PROVIDER`, `GCP_DEPLOY_SA`, `LOKI_CORS_ORIGINS` を登録 (`LOKI_CORS_ORIGINS=https://tool.frontworks.dev,http://localhost:4321`) (ユーザ手動実行済)
-- [ ] 6.3 ローカルから `gcloud auth configure-docker asia-northeast1-docker.pkg.dev` を実行
-- [ ] 6.4 ローカルから手動でイメージをビルド・push し (`docker build -t asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/loki/api:bootstrap . && docker push ...`)、`gcloud run deploy loki-api ...` (フルオプション) で初回デプロイを実行
-- [ ] 6.5 `gcloud run services describe loki-api --region=asia-northeast1 --format='value(status.url)'` でサービス URL を取得し、`curl ${URL}/api/v1/health` が 200 を返すことを確認
+- [x] 6.3 ローカルから `gcloud auth configure-docker asia-northeast1-docker.pkg.dev` を実行
+- [x] 6.4 ローカルから手動でイメージをビルド・push し (`docker build --platform linux/amd64 -t asia-northeast1-docker.pkg.dev/$GCP_PROJECT_ID/loki/api:bootstrap . && docker push ...`)、`gcloud run deploy loki-api ...` (フルオプション) で初回デプロイを実行 (Apple Silicon の `--platform linux/amd64` 必要に気付いた経緯は commit `2e294ae` で文書化)
+- [x] 6.5 `gcloud run services describe loki-api --region=asia-northeast1 --format='value(status.url)'` でサービス URL を取得し、`curl ${URL}/api/v1/health` が 200 を返すことを確認 (status:ok 確認済)
 - [ ] 6.6 `curl ${URL}/openapi.yaml` で OpenAPI スペックが配信されていることを確認
 - [ ] 6.7 `cd ../Lugh && echo "PUBLIC_API_BASE_URL=${URL}" > .env.local && bun run dev` で Lugh dev サーバを起動し、ブラウザから実際に画像変換が動作すること (CORS エラーがないこと) を確認
 - [ ] 6.8 `curl -i -X OPTIONS -H "Origin: http://localhost:4321" -H "Access-Control-Request-Method: POST" ${URL}/api/v1/convert` で CORS プリフライトに `Access-Control-Allow-Origin: http://localhost:4321` が返ることを確認
